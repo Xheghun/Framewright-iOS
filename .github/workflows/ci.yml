@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS ${{ matrix.platform }} / ${{ matrix.configuration }}
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [Simulator, Device]
+        configuration: [Debug, Release]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Report toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Validate package manifest
+        run: swift package describe
+      - name: Build all package products
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+          BUILD_CONFIGURATION: ${{ matrix.configuration }}
+        run: |
+          set -euo pipefail
+          if [[ "$BUILD_PLATFORM" == "Simulator" ]]; then
+            destination='generic/platform=iOS Simulator'
+          else
+            destination='generic/platform=iOS'
+          fi
+          xcodebuild build \
+            -scheme Framewright-Package \
+            -configuration "$BUILD_CONFIGURATION" \
+            -destination "$destination" \
+            -derivedDataPath "$RUNNER_TEMP/FramewrightDerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Report validation scope
+        run: |
+          echo 'Package build completed. No test targets exist yet; this workflow does not run tests.' >> "$GITHUB_STEP_SUMMARY"
