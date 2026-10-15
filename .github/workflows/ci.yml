@@ -16,6 +16,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Swift Lint
+    runs-on: macos-15
+    timeout-minutes: 10
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check Swift formatting and style
+        run: |
+          xcrun swift-format --version
+          xcrun swift-format lint --strict --recursive Package.swift Sources Tests Examples
+
   build:
     name: iOS ${{ matrix.platform }} / ${{ matrix.configuration }}
     runs-on: macos-15
@@ -55,6 +71,79 @@ jobs:
             -destination "$destination" \
             -derivedDataPath "$RUNNER_TEMP/FramewrightDerivedData" \
             CODE_SIGNING_ALLOWED=NO
-      - name: Report validation scope
+
+  test:
+    name: iOS Tests
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Detect test targets
+        id: tests
         run: |
-          echo 'Package build completed. No test targets exist yet; this workflow does not run tests.' >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          swift package dump-package > "$RUNNER_TEMP/package.json"
+          python3 - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+          package = json.loads((Path(os.environ["RUNNER_TEMP"]) / "package.json").read_text())
+          targets = [target["name"] for target in package["targets"] if target["type"] == "test"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"present={'true' if targets else 'false'}\n")
+          if not targets:
+              print("::notice::No test targets are declared. Test execution is skipped.")
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+                  summary.write("### iOS Tests\nSkipped: no test targets are declared in Package.swift. No tests were executed.\n")
+          else:
+              print("Test targets: " + ", ".join(targets))
+          PYTHON
+      - name: Select iOS simulator
+        if: steps.tests.outputs.present == 'true'
+        id: simulator
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/simulators.json"
+          python3 - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+          devices = json.loads((Path(os.environ["RUNNER_TEMP"]) / "simulators.json").read_text())["devices"]
+          candidates = [device for runtime, entries in devices.items()
+                        if ".iOS-" in runtime for device in entries
+                        if device["isAvailable"] and device["name"].startswith("iPhone")]
+          if not candidates:
+              raise SystemExit("No available iPhone simulator found for the selected Xcode.")
+          device = candidates[0]
+          print(f"Selected {device['name']} ({device['udid']})")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"udid={device['udid']}\n")
+          PYTHON
+      - name: Run package tests
+        if: steps.tests.outputs.present == 'true'
+        env:
+          SIMULATOR_ID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -scheme Framewright-Package \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/FramewrightTestData" \
+            -resultBundlePath "$RUNNER_TEMP/FramewrightTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Upload test results
+        if: always() && steps.tests.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ${{ runner.temp }}/FramewrightTests.xcresult
+          if-no-files-found: warn
+          retention-days: 7

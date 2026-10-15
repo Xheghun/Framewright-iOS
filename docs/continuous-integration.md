@@ -1,5 +1,11 @@
 # Continuous integration and delivery
 
+## Lint checks
+
+The `Swift Lint` job runs the Xcode toolchain's `swift-format` linter in strict mode across the package manifest, sources, tests, and examples. Formatting and supported style-rule violations fail the job. The repository's `.swift-format` sets four-space indentation and a 120-column line length; other rules use the selected toolchain's defaults.
+
+This is formatting and style linting, not a separate SwiftLint or static-analysis service. CI uses the formatter bundled with Xcode 16.4; use that toolchain for identical local results. See the [swift-format documentation](https://github.com/swiftlang/swift-format) for rule coverage.
+
 ## Build checks
 
 GitHub Actions runs on pull requests targeting `main`, pushes to `main`, version tags beginning with `v`, and manual dispatches.
@@ -8,13 +14,16 @@ The build matrix uses macOS 15 with Xcode 16.4 selected explicitly. It compiles 
 
 Each job validates the package manifest and reports its toolchain. Workflow permissions are read-only, checkout credentials are not persisted, and superseded runs on the same ref are cancelled. Dependabot checks GitHub Actions dependencies weekly.
 
-The current checks establish that the package compiles. There are no test targets, and successful builds do not establish playback correctness or release readiness. Add simulator test execution when the first test target is introduced; test failures must fail CI.
+The separate `iOS Tests` job inspects the package manifest for test targets. When none exist, it explicitly reports skipped test execution in the job summary. Once test targets are declared, it selects an available iPhone simulator and runs `xcodebuild test` using the package scheme. Test failures fail the job, and result bundles are uploaded for diagnosis. Manifest errors and missing simulators fail the job rather than being treated as skipped tests.
+
+The current package has no test targets. A successful workflow therefore establishes compilation, not passing behavior tests or release readiness. Remove the no-target allowance when the first test targets are introduced so accidental removal of all tests cannot silently skip validation.
 
 ## Local validation
 
 Run from the repository root:
 
 ```sh
+xcrun swift-format lint --strict --recursive Package.swift Sources Tests Examples
 swift package describe
 xcodebuild build -scheme Framewright-Package -configuration Debug \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
@@ -37,4 +46,4 @@ Release publication remains manual until implementation, tests, licensing, and c
 
 Pushing a tag makes that version visible to SPM immediately; the tag-triggered CI run is verification, not a publication gate. Do not tag unvalidated commits.
 
-After the first hosted run succeeds, configure branch protection to require the four build checks before merging. Repository protection settings are managed separately from these workflow files.
+After the first hosted run succeeds, configure branch protection to require `Swift Lint`, the four build checks, and `iOS Tests` before merging. Repository protection settings are managed separately from these workflow files.
