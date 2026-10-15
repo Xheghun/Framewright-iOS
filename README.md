@@ -39,6 +39,7 @@ These commands validate the package structure and compile the source targets on 
 
 ## Contributor documentation
 
+- [Continuous integration and delivery](docs/continuous-integration.md)
 - [Implementation plan](docs/implementation-plan.md)
 - [Test strategy](Tests/README.md)
 - [Example app scope](Examples/README.md)
