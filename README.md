@@ -1,27 +1,44 @@
 # Framewright for iOS
 
-Planned native iOS diagnostics library for host-owned `AVPlayer` instances, distributed through Swift Package Manager. Diagnostic UI will use SwiftUI.
+Framewright is an attach-first diagnostics toolkit for iOS video playback, distributed through Swift Package Manager. Its architecture centers on host-owned `AVPlayer` instances, with separate modules for analytics, player integration, bandwidth, codec, DRM, diagnostics UI, and persistence.
 
-**Status: scaffold only.** There are no public APIs, playback observers, metrics, UI, persistence, or implemented features yet.
+Your application retains ownership of player creation, configuration, playback control, and lifecycle.
 
-## Package products
+> **Development status:** The repository currently contains the package structure. Public APIs and diagnostic functionality are not yet available.
 
-| Product | Planned responsibility |
+## Modules
+
+The package defines the following products and module responsibilities:
+
+| Product | Purpose |
 | --- | --- |
-| `FramewrightAnalytics` | Events, session lifecycle, aggregation, summaries, JSON serialization |
-| `FramewrightAVPlayerAdapter` | Observe a host-owned player and translate observations into diagnostic events |
-| `FramewrightBandwidthMonitor` | Available bandwidth and transfer telemetry |
-| `FramewrightCodecInspector` | Available media-format and codec diagnostics |
-| `FramewrightDRMInspector` | Available DRM diagnostics and explicit host integration where required |
-| `FramewrightDiagnosticsOverlay` | SwiftUI diagnostics driven by the event stream |
-| `FramewrightStorage` | Optional session persistence and export |
+| `FramewrightAnalytics` | Player-independent events, aggregation, summaries, and JSON serialization |
+| `FramewrightAVPlayerAdapter` | AVPlayer observation and playback event mapping |
+| `FramewrightBandwidthMonitor` | Bandwidth and transfer telemetry |
+| `FramewrightCodecInspector` | Media-format and codec inspection |
+| `FramewrightDRMInspector` | DRM diagnostics |
+| `FramewrightDiagnosticsOverlay` | SwiftUI diagnostics UI driven by the diagnostic event stream |
+| `FramewrightStorage` | Session persistence and JSON export |
 
-Each feature target currently depends only on `FramewrightAnalytics`. Platform-specific dependencies will be decided during the API audit.
+Each product is declared separately so applications can select the modules they need. Feature modules depend on `FramewrightAnalytics`.
 
 ## Development
 
-Open `Package.swift` in Xcode or add this directory as a local package to an iOS project. The provisional minimum deployment target is iOS 16, with Swift tools 6.0. Confirm compatibility during the platform audit before publishing.
+Open `Package.swift` in Xcode to work on the library, or add the repository directory as a local Swift package dependency.
 
-`swift package describe` checks the package structure. `swift build` checks the empty targets on the host; it does not validate future iOS features.
+The package manifest specifies iOS 16 or later and Swift tools 6.0. Release compatibility has not yet been validated.
 
-See [the implementation plan](docs/implementation-plan.md), [test strategy](Tests/README.md), and [example app scope](Examples/README.md).
+Inspect and build the package:
+
+```sh
+swift package describe
+swift build
+```
+
+These commands validate the package structure and compile the source targets on the host platform. iOS integration requires separate simulator and device validation.
+
+## Contributor documentation
+
+- [Implementation plan](docs/implementation-plan.md)
+- [Test strategy](Tests/README.md)
+- [Example app scope](Examples/README.md)
