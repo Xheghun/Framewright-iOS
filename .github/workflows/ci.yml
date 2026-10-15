@@ -141,7 +141,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Upload test results
         if: always() && steps.tests.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-results
           path: ${{ runner.temp }}/FramewrightTests.xcresult
