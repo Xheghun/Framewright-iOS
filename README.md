@@ -4,7 +4,7 @@ Framewright is an attach-first diagnostics toolkit for iOS video playback, distr
 
 Your application retains ownership of player creation, configuration, playback control, and lifecycle.
 
-> **Development status:** The repository currently contains the package structure. Public APIs and diagnostic functionality are not yet available.
+> **Development status:** The analytics module provides event processing, session summaries, live subscriptions, and JSON export. Player integration and the other feature modules are not yet implemented.
 
 ## Modules
 
@@ -12,7 +12,7 @@ The package defines the following products and module responsibilities:
 
 | Product | Purpose |
 | --- | --- |
-| `FramewrightAnalytics` | Player-independent events, aggregation, summaries, and JSON serialization |
+| [`FramewrightAnalytics`](docs/modules/analytics.md) | Player-independent events, aggregation, summaries, and JSON serialization |
 | `FramewrightAVPlayerAdapter` | AVPlayer observation and playback event mapping |
 | `FramewrightBandwidthMonitor` | Bandwidth and transfer telemetry |
 | `FramewrightCodecInspector` | Media-format and codec inspection |
@@ -26,13 +26,14 @@ Each product is declared separately so applications can select the modules they 
 
 Open `Package.swift` in Xcode to work on the library, or add the repository directory as a local Swift package dependency.
 
-The package manifest specifies iOS 16 or later and Swift tools 6.0. Release compatibility has not yet been validated.
+The package specifies iOS 16 or later and Swift tools 6.0. macOS 13 is declared for host-side analytics testing. Release compatibility has not yet been validated.
 
 Inspect and build the package:
 
 ```sh
 swift package describe
 swift build
+swift test
 ```
 
 These commands validate the package structure and compile the source targets on the host platform. iOS integration requires separate simulator and device validation.
