@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Framewright",
-    platforms: [.iOS(.v16)],
+    platforms: [.iOS(.v16), .macOS(.v13)],
     products: [
         .library(name: "FramewrightAnalytics", targets: ["FramewrightAnalytics"]),
         .library(name: "FramewrightAVPlayerAdapter", targets: ["FramewrightAVPlayerAdapter"]),
@@ -15,6 +15,9 @@ let package = Package(
     ],
     targets: [
         .target(name: "FramewrightAnalytics"),
+        .testTarget(
+            name: "FramewrightAnalyticsTests", dependencies: ["FramewrightAnalytics"], resources: [.process("Fixtures")]
+        ),
         .target(name: "FramewrightAVPlayerAdapter", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightBandwidthMonitor", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightCodecInspector", dependencies: ["FramewrightAnalytics"]),

@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "fixture",
+  "truncated": false,
+  "events": [
+    {
+      "sessionId": "fixture",
+      "eventId": "event-0",
+      "timestampMs": 100,
+      "elapsedRealtimeMs": 0,
+      "type": "SESSION_START",
+      "playerState": "READY",
+      "payload": {
+        "mediaUri": "https://example.com/video.m3u8",
+        "drmScheme": "FAIRPLAY",
+        "deviceModel": "fixture",
+        "osVersion": "16.0",
+        "appVersion": "1.0"
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-1",
+      "timestampMs": 101,
+      "elapsedRealtimeMs": 1,
+      "type": "REBUFFER_START",
+      "playerState": "READY",
+      "payload": {
+        "bufferedMsAtStart": 0
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-2",
+      "timestampMs": 102,
+      "elapsedRealtimeMs": 2,
+      "type": "REBUFFER_END",
+      "playerState": "READY",
+      "payload": {
+        "durationMs": 100
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-3",
+      "timestampMs": 103,
+      "elapsedRealtimeMs": 3,
+      "type": "RENDER_FIRST_FRAME",
+      "playerState": "READY",
+      "payload": {
+        "elapsedSincePrepareMs": 100
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-4",
+      "timestampMs": 104,
+      "elapsedRealtimeMs": 4,
+      "type": "TRACK_SWITCH",
+      "playerState": "READY",
+      "payload": {
+        "fromFormat": null,
+        "toFormat": {
+          "width": 1920,
+          "height": 1080,
+          "bitrate": 4000000,
+          "mimeType": "video/avc",
+          "codecs": "avc1.640028"
+        },
+        "reason": "INITIAL",
+        "estimatedBandwidthBps": 8000000,
+        "bufferedDurationMs": 2000,
+        "availableVideoFormats": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "bitrate": 4000000,
+            "mimeType": "video/avc",
+            "codecs": "avc1.640028"
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-5",
+      "timestampMs": 105,
+      "elapsedRealtimeMs": 5,
+      "type": "DECODER_INIT",
+      "playerState": "READY",
+      "payload": {
+        "decoderName": "example.decoder",
+        "mimeType": "video/avc",
+        "trackType": "VIDEO",
+        "initializationDurationMs": 5,
+        "isHardwareAccelerated": true,
+        "capabilities": {
+          "canonicalName": "example.decoder",
+          "implementationType": "HARDWARE_ACCELERATED",
+          "classificationSource": "PLATFORM",
+          "isVendor": null,
+          "isAlias": null,
+          "profileLevels": [
+            {
+              "profile": 8,
+              "level": 2048
+            }
+          ],
+          "supportsAdaptivePlayback": true,
+          "supportsSecurePlayback": true,
+          "supportsTunneledPlayback": false,
+          "maxSupportedInstances": 4,
+          "selectedFormatSupport": "SUPPORTED",
+          "videoCapabilities": {
+            "supportedWidths": {
+              "lower": 16,
+              "upper": 3840
+            },
+            "supportedHeights": {
+              "lower": 16,
+              "upper": 2160
+            },
+            "supportedBitratesBps": {
+              "lower": 1,
+              "upper": 20000000
+            },
+            "supportedFrameRates": {
+              "lower": 1.0,
+              "upper": 60.0
+            },
+            "widthAlignment": 2,
+            "heightAlignment": 2
+          }
+        }
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-6",
+      "timestampMs": 106,
+      "elapsedRealtimeMs": 6,
+      "type": "DROPPED_FRAMES",
+      "playerState": "READY",
+      "payload": {
+        "count": 2,
+        "elapsedMs": 1000
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-7",
+      "timestampMs": 107,
+      "elapsedRealtimeMs": 7,
+      "type": "LOAD_ERROR",
+      "playerState": "READY",
+      "payload": {
+        "uri": "https://example.com/segment.ts",
+        "httpStatus": 503,
+        "errorClass": "HTTP_5XX",
+        "retryCount": 1,
+        "wasCanceled": false,
+        "errorMessage": "unavailable"
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-8",
+      "timestampMs": 108,
+      "elapsedRealtimeMs": 8,
+      "type": "DRM_KEY_STATUS",
+      "playerState": "READY",
+      "payload": {
+        "keyId": "redacted",
+        "status": "USABLE",
+        "securityLevel": "unknown",
+        "expirationTimeMs": null,
+        "hdcpLevel": null,
+        "maxHdcpLevel": null,
+        "hasNewUsableKey": true
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-9",
+      "timestampMs": 109,
+      "elapsedRealtimeMs": 9,
+      "type": "DRM_SESSION_EVENT",
+      "playerState": "READY",
+      "payload": {
+        "eventType": "KEYS_LOADED",
+        "state": "OPENED_WITH_KEYS",
+        "errorCode": null,
+        "errorMessage": null
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-10",
+      "timestampMs": 110,
+      "elapsedRealtimeMs": 10,
+      "type": "DRM_REQUEST",
+      "playerState": "READY",
+      "payload": {
+        "requestKind": "LICENSE",
+        "licenseRequestType": "INITIAL",
+        "attemptNumber": 1,
+        "durationMs": 20,
+        "successful": true,
+        "errorCode": null,
+        "errorMessage": null
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-11",
+      "timestampMs": 111,
+      "elapsedRealtimeMs": 11,
+      "type": "DRM_EXPIRATION_UPDATE",
+      "playerState": "READY",
+      "payload": {
+        "expirationTimeMs": 100000
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-12",
+      "timestampMs": 112,
+      "elapsedRealtimeMs": 12,
+      "type": "BANDWIDTH_SAMPLE",
+      "playerState": "READY",
+      "payload": {
+        "segmentSizeBytes": 1000,
+        "downloadDurationMs": 10,
+        "instantaneousBps": 800000,
+        "fastEstimateBps": 800000,
+        "slowEstimateBps": 700000,
+        "defaultEstimateBps": 750000,
+        "confidence": 0.9
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-13",
+      "timestampMs": 113,
+      "elapsedRealtimeMs": 13,
+      "type": "PLAYBACK_ERROR",
+      "playerState": "READY",
+      "payload": {
+        "errorCode": "example",
+        "errorMessage": null,
+        "cause": null,
+        "isFatal": false
+      }
+    },
+    {
+      "sessionId": "fixture",
+      "eventId": "event-14",
+      "timestampMs": 114,
+      "elapsedRealtimeMs": 14,
+      "type": "SESSION_END",
+      "playerState": "READY",
+      "payload": {
+        "durationMs": 60000,
+        "reason": "PLAYBACK_ENDED"
+      }
+    }
+  ]
+}

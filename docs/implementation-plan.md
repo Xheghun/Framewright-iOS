@@ -8,7 +8,7 @@ The host application creates, configures, controls, and releases its player. Fra
 
 ## Current scope
 
-This delivery contains only the package manifest, empty source targets, documentation, and development ignores. It deliberately defines no public API or feature behavior. Tests and an example app are planned, not implemented.
+The package structure and analytics module are implemented. Analytics includes typed events, bounded history, summaries, live delivery, JSON serialization, and a test suite. Player integration and the remaining modules are still pending. The analytics contract and explicit platform differences are documented in [Analytics](modules/analytics.md).
 
 Reference implementation: `/Users/david/AndroidStudioProjects/Framewright`.
 
