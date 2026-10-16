@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct BandwidthSamplePayload: Codable, Equatable, Sendable {
     public let segmentSizeBytes: Int64
     public let downloadDurationMs: Int64

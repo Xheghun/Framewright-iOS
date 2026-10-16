@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct TrackSwitchPayload: Codable, Equatable, Sendable {
     public let fromFormat: FormatSnapshot?
     public let toFormat: FormatSnapshot

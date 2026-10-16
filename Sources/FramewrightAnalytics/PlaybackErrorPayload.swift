@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct PlaybackErrorPayload: Codable, Equatable, Sendable {
     public let errorCode: String
     public let errorMessage: String?

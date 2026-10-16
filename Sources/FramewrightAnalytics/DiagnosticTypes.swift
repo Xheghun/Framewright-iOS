@@ -1,6 +1,5 @@
 import Foundation
 
-/// Version of the shared Android/iOS diagnostic JSON schema.
 public let diagnosticSchemaVersion = 2
 
 public enum AnalyticsValidationError: Error, Equatable, Sendable {

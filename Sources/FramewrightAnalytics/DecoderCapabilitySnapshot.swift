@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DecoderCapabilitySnapshot: Codable, Equatable, Sendable {
     public let canonicalName: String?
     public let implementationType: CodecImplementationType

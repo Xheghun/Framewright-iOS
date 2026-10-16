@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct LoadErrorPayload: Codable, Equatable, Sendable {
     public let uri: String
     public let httpStatus: Int?

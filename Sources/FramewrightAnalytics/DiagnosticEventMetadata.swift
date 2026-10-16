@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DiagnosticEventMetadata: Codable, Equatable, Sendable {
     public let sessionId: String
     public let eventId: String

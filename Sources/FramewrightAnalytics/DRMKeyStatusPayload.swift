@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DRMKeyStatusPayload: Codable, Equatable, Sendable {
     public let keyId: String
     public let status: DRMKeyState

@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct VideoCodecCapabilitiesSnapshot: Codable, Equatable, Sendable {
     public let supportedWidths: IntRangeSnapshot
     public let supportedHeights: IntRangeSnapshot

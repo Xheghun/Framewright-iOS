@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct FormatSnapshot: Codable, Equatable, Sendable {
     public let width: Int?
     public let height: Int?

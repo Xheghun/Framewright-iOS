@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DRMRequestPayload: Codable, Equatable, Sendable {
     public let requestKind: DRMRequestKind
     public let licenseRequestType: DRMLicenseRequestType?

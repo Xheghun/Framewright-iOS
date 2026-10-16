@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct SessionEndPayload: Codable, Equatable, Sendable {
     public let durationMs: Int64
     public let reason: SessionEndReason

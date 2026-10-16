@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DoubleRangeSnapshot: Codable, Equatable, Sendable {
     public let lower: Double
     public let upper: Double

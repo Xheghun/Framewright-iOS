@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DRMSessionEventPayload: Codable, Equatable, Sendable {
     public let eventType: DRMSessionEventType
     public let state: DRMSessionState?

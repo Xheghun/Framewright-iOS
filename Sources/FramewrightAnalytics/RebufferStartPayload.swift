@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct RebufferStartPayload: Codable, Equatable, Sendable {
     public let bufferedMsAtStart: Int64
 

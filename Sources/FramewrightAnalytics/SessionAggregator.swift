@@ -1,6 +1,6 @@
 import Foundation
 
-/// An immutable retained event history. Truncated histories produce partial summaries.
+/// Truncated histories produce partial summaries.
 public struct SessionSnapshot: Codable, Equatable, Sendable {
     public let schemaVersion: Int
     public let sessionId: String

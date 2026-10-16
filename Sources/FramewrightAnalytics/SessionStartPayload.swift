@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct SessionStartPayload: Codable, Equatable, Sendable {
     public let mediaUri: String
     public let drmScheme: DRMScheme?

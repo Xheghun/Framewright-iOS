@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DroppedFramesPayload: Codable, Equatable, Sendable {
     public let count: Int
     public let elapsedMs: Int64

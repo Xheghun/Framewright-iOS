@@ -1,6 +1,5 @@
 import Foundation
 
-/// Immutable, validated diagnostic data. Durations and timestamps use milliseconds.
 public struct DecoderInspectionRequest: Codable, Equatable, Sendable {
     public let decoderName: String
     public let mimeType: String

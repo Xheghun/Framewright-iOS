@@ -38,7 +38,7 @@ public enum DiagnosticPayload: Equatable, Sendable {
     }
 }
 
-/// Event metadata and a typed payload. Codable uses the shared flat wire envelope.
+/// Codable uses a flat metadata envelope with a typed payload.
 public struct DiagnosticEvent: Codable, Equatable, Sendable {
     public let metadata: DiagnosticEventMetadata
     public let payload: DiagnosticPayload
