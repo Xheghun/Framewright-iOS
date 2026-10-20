@@ -7,6 +7,7 @@ public struct DroppedFramesPayload: Codable, Equatable, Sendable {
     public init(count: Int, elapsedMs: Int64) throws {
         guard count >= 0 else { throw AnalyticsValidationError.invalidField("count") }
         guard elapsedMs >= 0 else { throw AnalyticsValidationError.invalidField("elapsedMs") }
+        try validateSchemaInteger(count, field: "count")
         self.count = count
         self.elapsedMs = elapsedMs
     }

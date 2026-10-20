@@ -13,6 +13,8 @@ public struct LoadErrorPayload: Codable, Equatable, Sendable {
         errorMessage: String? = nil
     ) throws {
         guard retryCount >= 0 else { throw AnalyticsValidationError.invalidField("retryCount") }
+        try validateSchemaInteger(httpStatus, field: "httpStatus")
+        try validateSchemaInteger(retryCount, field: "retryCount")
         self.uri = uri
         self.httpStatus = httpStatus
         self.errorClass = errorClass

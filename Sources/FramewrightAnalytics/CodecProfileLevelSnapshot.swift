@@ -5,6 +5,8 @@ public struct CodecProfileLevelSnapshot: Codable, Equatable, Sendable {
     public let level: Int
 
     public init(profile: Int, level: Int) throws {
+        try validateSchemaInteger(profile, field: "profile")
+        try validateSchemaInteger(level, field: "level")
         self.profile = profile
         self.level = level
     }

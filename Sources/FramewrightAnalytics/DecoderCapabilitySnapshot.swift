@@ -24,6 +24,7 @@ public struct DecoderCapabilitySnapshot: Codable, Equatable, Sendable {
         guard maxSupportedInstances.map({ $0 > 0 }) ?? true else {
             throw AnalyticsValidationError.invalidField("maxSupportedInstances")
         }
+        try validateSchemaInteger(maxSupportedInstances, field: "maxSupportedInstances")
         self.canonicalName = canonicalName
         self.implementationType = implementationType
         self.classificationSource = classificationSource
@@ -61,13 +62,12 @@ public struct DecoderCapabilitySnapshot: Codable, Equatable, Sendable {
             classificationSource: try values.decode(CodecClassificationSource.self, forKey: .classificationSource),
             isVendor: try values.decodeIfPresent(Bool.self, forKey: .isVendor),
             isAlias: try values.decodeIfPresent(Bool.self, forKey: .isAlias),
-            profileLevels: try values.decodeIfPresent([CodecProfileLevelSnapshot].self, forKey: .profileLevels) ?? [],
+            profileLevels: try values.decode([CodecProfileLevelSnapshot].self, forKey: .profileLevels),
             supportsAdaptivePlayback: try values.decode(Bool.self, forKey: .supportsAdaptivePlayback),
             supportsSecurePlayback: try values.decode(Bool.self, forKey: .supportsSecurePlayback),
             supportsTunneledPlayback: try values.decode(Bool.self, forKey: .supportsTunneledPlayback),
             maxSupportedInstances: try values.decodeIfPresent(Int.self, forKey: .maxSupportedInstances),
-            selectedFormatSupport: try values.decodeIfPresent(CodecFormatSupport.self, forKey: .selectedFormatSupport)
-                ?? .unknown,
+            selectedFormatSupport: try values.decode(CodecFormatSupport.self, forKey: .selectedFormatSupport),
             videoCapabilities: try values.decodeIfPresent(
                 VideoCodecCapabilitiesSnapshot.self, forKey: .videoCapabilities)
         )

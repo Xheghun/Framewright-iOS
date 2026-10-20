@@ -31,9 +31,9 @@ public struct SessionStartPayload: Codable, Equatable, Sendable {
         try self.init(
             mediaUri: try values.decode(String.self, forKey: .mediaUri),
             drmScheme: try values.decodeIfPresent(DRMScheme.self, forKey: .drmScheme),
-            deviceModel: try values.decodeIfPresent(String.self, forKey: .deviceModel) ?? "unknown",
-            osVersion: try values.decodeIfPresent(String.self, forKey: .osVersion) ?? "unknown",
-            appVersion: try values.decodeIfPresent(String.self, forKey: .appVersion) ?? "unknown"
+            deviceModel: try values.decode(String.self, forKey: .deviceModel),
+            osVersion: try values.decode(String.self, forKey: .osVersion),
+            appVersion: try values.decode(String.self, forKey: .appVersion)
         )
     }
 

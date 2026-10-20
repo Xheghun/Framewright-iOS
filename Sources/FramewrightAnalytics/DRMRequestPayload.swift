@@ -15,6 +15,7 @@ public struct DRMRequestPayload: Codable, Equatable, Sendable {
     ) throws {
         guard attemptNumber > 0 else { throw AnalyticsValidationError.invalidField("attemptNumber") }
         guard durationMs >= 0 else { throw AnalyticsValidationError.invalidField("durationMs") }
+        try validateSchemaInteger(attemptNumber, field: "attemptNumber")
         self.requestKind = requestKind
         self.licenseRequestType = licenseRequestType
         self.attemptNumber = attemptNumber

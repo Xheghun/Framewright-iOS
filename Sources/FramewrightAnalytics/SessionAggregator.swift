@@ -43,7 +43,18 @@ public struct SessionAggregator: Sendable {
         var truncated = false
 
         var ordered: [DiagnosticEvent] {
-            Array(events[oldest...]) + Array(events[..<oldest])
+            guard oldest != 0 else { return events }
+            return Array(events[oldest...]) + Array(events[..<oldest])
+        }
+
+        mutating func record(_ event: DiagnosticEvent, capacity: Int) {
+            if events.count < capacity {
+                events.append(event)
+            } else {
+                events[oldest] = event
+                oldest = (oldest + 1) % capacity
+                truncated = true
+            }
         }
     }
 
@@ -56,16 +67,7 @@ public struct SessionAggregator: Sendable {
     }
 
     public mutating func record(_ event: DiagnosticEvent) {
-        // Mutate through the dictionary to avoid copying the retained array on every append.
-        if sessions[event.sessionId] == nil { sessions[event.sessionId] = History() }
-        if sessions[event.sessionId]!.events.count < maxEventsPerSession {
-            sessions[event.sessionId]!.events.append(event)
-        } else {
-            let index = sessions[event.sessionId]!.oldest
-            sessions[event.sessionId]!.events[index] = event
-            sessions[event.sessionId]!.oldest = (index + 1) % maxEventsPerSession
-            sessions[event.sessionId]!.truncated = true
-        }
+        sessions[event.sessionId, default: History()].record(event, capacity: maxEventsPerSession)
     }
 
     public func snapshot(sessionId: String) throws -> SessionSnapshot {

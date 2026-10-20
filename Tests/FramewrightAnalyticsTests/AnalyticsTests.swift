@@ -108,7 +108,7 @@ private struct FailingSink: DiagnosticEventSink {
     func record(_ event: DiagnosticEvent) throws { throw AnalyticsValidationError.invalidField("sink") }
 }
 
-@Test func sinkFailureAndSlowSubscribersDoNotLoseHistory() async throws {
+@Test(.timeLimit(.minutes(1))) func sinkFailureAndSlowSubscribersDoNotLoseHistory() async throws {
     let pipeline = try DiagnosticEventPipeline(liveBufferCapacity: 1, sinks: [FailingSink(), FailingSink()])
     let first = try event(.renderFirstFrame(RenderFirstFramePayload(elapsedSincePrepareMs: 1)), id: "first")
     let noListeners = await pipeline.publish(first)
@@ -133,7 +133,7 @@ private struct FailingSink: DiagnosticEventSink {
     #expect(await closedIterator.next() == nil)
 }
 
-@Test func concurrentPublicationRetainsEveryEvent() async throws {
+@Test(.timeLimit(.minutes(1))) func concurrentPublicationRetainsEveryEvent() async throws {
     let pipeline = try DiagnosticEventPipeline(maxEventsPerSession: 1_000)
     let events = try (0..<200).map {
         try event(.droppedFrames(DroppedFramesPayload(count: 1, elapsedMs: 1)), id: "\($0)")
@@ -191,7 +191,7 @@ private struct FailingSink: DiagnosticEventSink {
     #expect(result.trackSwitchesPerMinute == nil)
 }
 
-@Test func subscribersHaveNoReplayAndExplicitUnsubscribe() async throws {
+@Test(.timeLimit(.minutes(1))) func subscribersHaveNoReplayAndExplicitUnsubscribe() async throws {
     let pipeline = try DiagnosticEventPipeline()
     let first = try event(.renderFirstFrame(RenderFirstFramePayload(elapsedSincePrepareMs: 1)))
     _ = await pipeline.publish(first)
@@ -207,7 +207,7 @@ private struct FailingSink: DiagnosticEventSink {
     await pipeline.close()
 }
 
-@Test func subscriberCancellationDoesNotStopPublication() async throws {
+@Test(.timeLimit(.minutes(1))) func subscriberCancellationDoesNotStopPublication() async throws {
     let pipeline = try DiagnosticEventPipeline()
     let subscription = await pipeline.subscribe()
     let consumer = Task { for await _ in subscription.events {} }

@@ -6,6 +6,8 @@ public struct IntRangeSnapshot: Codable, Equatable, Sendable {
 
     public init(lower: Int, upper: Int) throws {
         guard lower <= upper else { throw AnalyticsValidationError.invalidField("range") }
+        try validateSchemaInteger(lower, field: "lower")
+        try validateSchemaInteger(upper, field: "upper")
         self.lower = lower
         self.upper = upper
     }

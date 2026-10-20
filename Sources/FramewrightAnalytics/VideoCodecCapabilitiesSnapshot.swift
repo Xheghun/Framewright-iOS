@@ -14,6 +14,8 @@ public struct VideoCodecCapabilitiesSnapshot: Codable, Equatable, Sendable {
     ) throws {
         guard widthAlignment > 0 else { throw AnalyticsValidationError.invalidField("widthAlignment") }
         guard heightAlignment > 0 else { throw AnalyticsValidationError.invalidField("heightAlignment") }
+        try validateSchemaInteger(widthAlignment, field: "widthAlignment")
+        try validateSchemaInteger(heightAlignment, field: "heightAlignment")
         self.supportedWidths = supportedWidths
         self.supportedHeights = supportedHeights
         self.supportedBitratesBps = supportedBitratesBps

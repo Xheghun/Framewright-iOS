@@ -16,6 +16,9 @@ public struct FormatSnapshot: Codable, Equatable, Sendable {
         guard mimeType.map({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ?? true else {
             throw AnalyticsValidationError.invalidField("mimeType")
         }
+        try validateSchemaInteger(width, field: "width")
+        try validateSchemaInteger(height, field: "height")
+        try validateSchemaInteger(bitrate, field: "bitrate")
         self.width = width
         self.height = height
         self.bitrate = bitrate

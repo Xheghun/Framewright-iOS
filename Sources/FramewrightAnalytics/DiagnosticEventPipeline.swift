@@ -88,8 +88,9 @@ public actor DiagnosticEventPipeline {
     }
 
     public func snapshot(sessionId: String) throws -> SessionSnapshot { try aggregator.snapshot(sessionId: sessionId) }
-    public func exportSessionJSON(sessionId: String) throws -> String {
-        try DiagnosticEventJSONCodec().encodeSession(aggregator.snapshot(sessionId: sessionId))
+    public nonisolated func exportSessionJSON(sessionId: String) async throws -> String {
+        let snapshot = try await snapshot(sessionId: sessionId)
+        return try DiagnosticEventJSONCodec().encodeSession(snapshot)
     }
     public func clear(sessionId: String) { aggregator.clear(sessionId: sessionId) }
 

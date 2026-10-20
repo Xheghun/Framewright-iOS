@@ -51,14 +51,14 @@ public struct DiagnosticEventJSONCodec: Sendable {
 
     private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
         let data = Data(json.utf8)
-        guard (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])) != nil else {
-            throw CodecError.malformedJSON
-        }
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch let error as CodecError {
             throw error
         } catch {
+            guard (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])) != nil else {
+                throw CodecError.malformedJSON
+            }
             throw CodecError.invalidPayload(String(describing: error))
         }
     }

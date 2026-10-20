@@ -27,7 +27,7 @@ let summary = try SessionSummaryCalculator().calculate(snapshot)
 let json = try await pipeline.exportSessionJSON(sessionId: "playback-1")
 ```
 
-Use a distinct session ID per playback session and a distinct event ID per event. `timestampMs` is Unix epoch time; `elapsedRealtimeMs` is monotonic time in milliseconds from the producer's chosen origin. All events in a session must use the same monotonic origin. Durations use milliseconds, bandwidth and bitrate use bits per second, and transfer sizes use bytes.
+Use a distinct session ID per playback session and a distinct event ID per event. `timestampMs` is Unix epoch time; `elapsedRealtimeMs` is monotonic time in milliseconds from the producer's chosen origin. All events in a session must use the same monotonic origin. Schema fields exposed as `Int` are restricted to signed 32-bit values for Android compatibility; `Int64` timestamps, durations, and bandwidth fields retain their full width. Durations use milliseconds, bandwidth and bitrate use bits per second, and transfer sizes use bytes.
 
 Events are retained in publication order. The library neither sorts timestamps nor deduplicates event IDs. It does not automatically create start/end events or close a session on a fatal error: those are adapter responsibilities.
 
@@ -51,7 +51,7 @@ Each subscription has its own bounded buffer, with capacity 128 by default and n
 
 Publishing records history first, calls sinks, then yields to live subscribers. A full subscriber buffer drops the incoming event for that subscriber; faster subscribers continue independently. Publication never waits for consumers. `PublishResult.liveDelivery` reports `.dropped` if any subscriber dropped the event, `.delivered` if at least one accepted it without any drops, or `.noSubscribers` when no active subscriber accepted it. `droppedLiveEventCount` counts affected publications, not individual subscriber losses.
 
-Cancellation removes the subscription asynchronously. Explicit `unsubscribe` gives the owner a deterministic cleanup point. `close` finishes all streams, is safe to repeat, and rejects later publication with `recorded == false` and `.closed`. Buffered events can still drain after a stream is finished. Snapshots remain available after closing. Clear retained sessions when they are no longer needed.
+Cancellation removes the subscription asynchronously. Explicit `unsubscribe` gives the owner a deterministic cleanup point. `close` finishes all streams, is safe to repeat, and rejects later publication with `recorded == false` and `.closed`. Buffered events can still drain after a stream is finished. Snapshots remain available after closing. JSON export captures a snapshot on the pipeline actor and encodes it outside that actor, so encoding does not block subsequent publications. Clear retained sessions when they are no longer needed.
 
 The pipeline is an actor. Within a publication there are no suspension points, so history, sink invocation, and live delivery preserve the same order. Concurrent callers are serialized in arrival order, which is not necessarily their task creation order.
 
@@ -80,7 +80,7 @@ Unavailable timing ratios are `nil`, not zero. A summary carries the snapshot's 
 
 All 15 Android event types are represented, including codec and DRM data. Their presence in the model does not imply those measurements are available from iOS. Adapters must not invent measurements; omit optional values, omit unavailable capability snapshots, or refrain from producing an event when required measurements are unavailable.
 
-The codec throws `CodecError` for malformed JSON, unsupported schema versions, unknown event types, and invalid payloads. Unknown object fields are ignored. Constructors and decoding both validate nonnegative durations/counts/rates, finite ranges and confidence, positive request attempts and alignments, and nonblank identifiers. Session decoding rejects events belonging to another session. These checks are intentionally stricter than Android for some malformed inputs.
+The codec throws `CodecError` for malformed JSON, unsupported schema versions, unknown event types, and invalid payloads. Unknown object fields are ignored. Required schema fields must be present and non-null, even when the Swift initializer offers a default. The backward-compatible `availableVideoFormats` field can still be absent. Constructors and decoding both validate nonnegative durations/counts/rates, finite ranges and confidence, positive request attempts and alignments, and nonblank identifiers. Session decoding rejects events belonging to another session. These checks are intentionally stricter than Android for some malformed inputs.
 
 The schema fixture tests cover every event type and nested decoder capabilities. They verify JSON object equivalence, not textual key order. This is schema compatibility testing; it does not run the Android runtime or establish equivalent platform measurements.
 

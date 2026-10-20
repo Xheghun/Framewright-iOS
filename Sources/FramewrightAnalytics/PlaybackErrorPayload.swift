@@ -26,7 +26,7 @@ public struct PlaybackErrorPayload: Codable, Equatable, Sendable {
             errorCode: try values.decode(String.self, forKey: .errorCode),
             errorMessage: try values.decodeIfPresent(String.self, forKey: .errorMessage),
             cause: try values.decodeIfPresent(String.self, forKey: .cause),
-            isFatal: try values.decodeIfPresent(Bool.self, forKey: .isFatal) ?? true
+            isFatal: try values.decode(Bool.self, forKey: .isFatal)
         )
     }
 
