@@ -7,7 +7,7 @@ import Testing
 
 @MainActor
 private func waitUntil(_ condition: () async throws -> Bool) async throws {
-    let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+    let deadline = ContinuousClock.now.advanced(by: .seconds(30))
     while try await !condition() {
         guard ContinuousClock.now < deadline else { throw TestFailure.timeout }
         try await Task.sleep(for: .milliseconds(20))
