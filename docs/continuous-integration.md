@@ -14,9 +14,9 @@ The build matrix uses macOS 15 with Xcode 16.4 selected explicitly. It compiles 
 
 Each job validates the package manifest and reports its toolchain. Workflow permissions are read-only, checkout credentials are not persisted, and superseded runs on the same ref are cancelled. Dependabot checks GitHub Actions dependencies weekly.
 
-The separate `iOS Tests` job inspects the package manifest for test targets. When none exist, it explicitly reports skipped test execution in the job summary. Once test targets are declared, it selects an available iPhone simulator and runs `xcodebuild test` using the package scheme. Test failures fail the job, and result bundles are uploaded for diagnosis. Manifest errors and missing simulators fail the job rather than being treated as skipped tests.
+The separate `iOS Tests` job inspects the package manifest for test targets. If none exist, it fails rather than silently skipping validation. It selects an available iPhone simulator and runs `xcodebuild test` using the package scheme. Test failures fail the job, and result bundles are uploaded for diagnosis. Manifest errors and missing simulators fail the job rather than being treated as skipped tests.
 
-The current package has no test targets. A successful workflow therefore establishes compilation, not passing behavior tests or release readiness. Remove the no-target allowance when the first test targets are introduced so accidental removal of all tests cannot silently skip validation.
+The package includes analytics tests. Successful tests establish the covered analytics behavior, not playback correctness or release readiness for the remaining modules.
 
 ## Local validation
 

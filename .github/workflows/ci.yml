@@ -98,9 +98,7 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write(f"present={'true' if targets else 'false'}\n")
           if not targets:
-              print("::notice::No test targets are declared. Test execution is skipped.")
-              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-                  summary.write("### iOS Tests\nSkipped: no test targets are declared in Package.swift. No tests were executed.\n")
+              raise SystemExit("No test targets declared; analytics tests are required.")
           else:
               print("Test targets: " + ", ".join(targets))
           PYTHON
