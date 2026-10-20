@@ -4,7 +4,7 @@ Framewright is an attach-first diagnostics toolkit for iOS video playback, distr
 
 Your application retains ownership of player creation, configuration, playback control, and lifecycle.
 
-> **Development status:** The analytics module provides event processing, session summaries, live subscriptions, and JSON export. Player integration and the other feature modules are not yet implemented.
+> **Development status:** Analytics and AVPlayer integration are available. The diagnostics overlay and remaining optional modules are not yet implemented.
 
 ## Modules
 
@@ -13,7 +13,7 @@ The package defines the following products and module responsibilities:
 | Product | Purpose |
 | --- | --- |
 | [`FramewrightAnalytics`](docs/modules/analytics.md) | Player-independent events, aggregation, summaries, and JSON serialization |
-| `FramewrightAVPlayerAdapter` | AVPlayer observation and playback event mapping |
+| [`FramewrightAVPlayerAdapter`](docs/modules/avplayer-adapter.md) | AVPlayer observation and playback event mapping |
 | `FramewrightBandwidthMonitor` | Bandwidth and transfer telemetry |
 | `FramewrightCodecInspector` | Media-format and codec inspection |
 | `FramewrightDRMInspector` | DRM diagnostics |

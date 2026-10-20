@@ -8,7 +8,7 @@ The host application creates, configures, controls, and releases its player. Fra
 
 ## Current scope
 
-The package structure and analytics module are implemented. Analytics includes typed events, bounded history, summaries, live delivery, JSON serialization, and a test suite. Player integration and the remaining modules are still pending. The analytics contract and explicit platform differences are documented in [Analytics](modules/analytics.md).
+The package structure and analytics module are implemented. Analytics includes typed events, bounded history, summaries, live delivery, JSON serialization, and a test suite. AVPlayer attachment, lifecycle observation, and host timing hooks are implemented and documented in [AVPlayer adapter](modules/avplayer-adapter.md). The overlay and remaining optional modules are pending. The analytics contract and explicit platform differences are documented in [Analytics](modules/analytics.md).
 
 Reference implementation: `/Users/david/AndroidStudioProjects/Framewright`.
 
