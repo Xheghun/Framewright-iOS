@@ -261,3 +261,37 @@ private struct NotificationItem: @unchecked Sendable {
     }
     return posted.wait(timeout: .now() + 2) == .success
 }
+
+@Test @MainActor func replayRejectsQueuedCompletionFromPreviousSession() async throws {
+    let url = try audioFixture()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let item = AVPlayerItem(url: url)
+    let player = AVPlayer(playerItem: item)
+    let pipeline = try DiagnosticEventPipeline()
+    let source = try FramewrightAVPlayer.attach(player: player, pipeline: pipeline, sessionId: "old")
+    #expect(queueEndNotification(item))
+    try source.startSession(sessionId: "replay")
+    await source.flush()
+    #expect(source.activeSessionID == "replay")
+    #expect(try await pipeline.snapshot(sessionId: "replay").events.map(\.type) == [.sessionStart])
+    source.detach()
+    await source.flush()
+}
+
+@Test @MainActor func reusingItemRequiresFreshPreparationTiming() async throws {
+    let url = try audioFixture()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let item = AVPlayerItem(url: url)
+    let player = AVPlayer(playerItem: item)
+    let pipeline = try DiagnosticEventPipeline()
+    let source = try FramewrightAVPlayer.attach(player: player, pipeline: pipeline)
+    try source.recordPreparationStarted(for: item)
+    #expect(source.recordFirstFrame(for: item))
+    player.replaceCurrentItem(with: nil)
+    player.replaceCurrentItem(with: item)
+    #expect(!source.recordFirstFrame(for: item))
+    try source.recordPreparationStarted(for: item)
+    #expect(source.recordFirstFrame(for: item))
+    source.detach()
+    await source.flush()
+}

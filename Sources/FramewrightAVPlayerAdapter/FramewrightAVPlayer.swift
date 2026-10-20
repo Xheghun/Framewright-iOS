@@ -111,16 +111,20 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         seekToken = nil
         let payload = try sessionPayload(for: item)
         writer?.write(try state.start(id: sessionId, payload: payload, preparedMs: nil, at: .now))
+        observeItem(item)
         if let attachmentID { synchronizePlayback(attachment: attachmentID) }
     }
 
     /// Call before the host begins preparing or assigning this item.
     public func recordPreparationStarted(for item: AVPlayerItem) throws {
         guard isAttached else { throw AVPlayerDiagnosticsError.notAttached }
-        preparedItem = item
         let now = DiagnosticTime.now
-        preparedAt = now.monotonicMs
-        if observedItem === item { state.markPreparation(at: now) }
+        if observedItem === item {
+            state.markPreparation(at: now)
+        } else {
+            preparedItem = item
+            preparedAt = now.monotonicMs
+        }
     }
 
     /// Call only from a host rendering signal. Playback readiness alone is insufficient.
@@ -163,8 +167,6 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         observedItem = item
         seekToken = nil
         guard let item else { return }
-        let token = UUID()
-        itemID = token
         let sessionID = nextSessionID ?? UUID().uuidString
         nextSessionID = nil
         let prepared = preparedItem === item ? preparedAt : nil
@@ -176,6 +178,14 @@ public final class FramewrightAVPlayer: PlayerEventSource {
             writer?.write(
                 try state.start(id: sessionID, payload: sessionPayload(for: item), preparedMs: prepared, at: .now))
         } catch { configuration.onDiagnosticsError(error) }
+        observeItem(item)
+        if let attachmentID { synchronizePlayback(attachment: attachmentID) }
+    }
+
+    private func observeItem(_ item: AVPlayerItem) {
+        itemObservations.cancel()
+        let token = UUID()
+        itemID = token
         itemObservations.add(
             item.observe(\.status, options: [.new]) { [weak self] _, _ in
                 deliverOnMain { [weak self] in
@@ -198,7 +208,6 @@ public final class FramewrightAVPlayer: PlayerEventSource {
             }
         }
         itemObservations.addNotification(failureToken)
-        if let attachmentID { synchronizePlayback(attachment: attachmentID) }
     }
 
     private func observe(
