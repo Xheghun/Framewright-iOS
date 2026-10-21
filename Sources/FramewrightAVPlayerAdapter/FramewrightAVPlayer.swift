@@ -49,10 +49,18 @@ public final class FramewrightAVPlayer: PlayerEventSource {
     public func attach(pipeline: DiagnosticEventPipeline, sessionId: String) throws {
         guard !isAttached else { throw AVPlayerDiagnosticsError.alreadyAttached }
         try validate(sessionId)
+        if let writer, writer.hasOverflowed {
+            guard writer.isDrained else { throw AVPlayerDiagnosticsError.deliveryPending }
+            self.writer = nil
+        }
+        if let writer {
+            try writer.setPipeline(pipeline)
+        } else {
+            writer = OrderedEventWriter(pipeline: pipeline, onError: configuration.onDiagnosticsError)
+        }
         let attachment = UUID()
         attachmentID = attachment
         nextSessionID = sessionId
-        writer = OrderedEventWriter(pipeline: pipeline, after: writer, onError: configuration.onDiagnosticsError)
         playerObservations.add(
             player.observe(\.currentItem, options: [.new]) { [weak self] _, change in
                 let reference = ObservedItem(item: change.newValue ?? nil)
@@ -89,13 +97,12 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         preparedAt = nil
         nextSessionID = nil
         seekToken = nil
-        writer?.finish()
     }
 
     /// Waits for events already accepted by the adapter, including a preceding detach.
     public func flush() async {
         guard let writer else { return }
-        if isAttached { await writer.flush() } else { await writer.waitUntilFinished() }
+        await writer.flush()
     }
 
     public func endSession(reason: SessionEndReason = .userStopped) {

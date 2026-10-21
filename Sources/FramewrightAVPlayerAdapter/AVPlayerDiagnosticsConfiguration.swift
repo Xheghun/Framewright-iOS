@@ -42,6 +42,8 @@ public enum AVPlayerDiagnosticsError: Error, Equatable, Sendable {
     case notAttached
     case noCurrentItem
     case invalidSessionID
+    case eventQueueOverflow(capacity: Int)
+    case deliveryPending
     case pipelineClosed
     case sinkFailures(Int)
 }
