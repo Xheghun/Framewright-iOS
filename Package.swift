@@ -19,6 +19,7 @@ let package = Package(
             name: "FramewrightAnalyticsTests", dependencies: ["FramewrightAnalytics"], resources: [.process("Fixtures")]
         ),
         .target(name: "FramewrightAVPlayerAdapter", dependencies: ["FramewrightAnalytics"]),
+        .testTarget(name: "FramewrightAVPlayerAdapterTests", dependencies: ["FramewrightAVPlayerAdapter"]),
         .target(name: "FramewrightBandwidthMonitor", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightCodecInspector", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightDRMInspector", dependencies: ["FramewrightAnalytics"]),

@@ -6,4 +6,6 @@ Run `swift test` on the development host, or run the `Framewright-Package` schem
 
 `Fixtures/schema-v2-session.json` is a hand-assembled contract fixture based on the Android codec's field names and enum values. It covers all event types, nullable fields, and nested codec capabilities; it is not an export captured from a running player.
 
-Add adapter, overlay, storage, and device-level tests alongside those modules' implementations. The current suite does not validate playback, codec availability, DRM behavior, or SwiftUI integration.
+`FramewrightAVPlayerAdapterTests` covers session state, observation cleanup, replacement, stale callbacks, redaction, and real AVPlayer playback/failure using locally generated audio. Run the same tests on an iOS simulator. Tests do not depend on remote media.
+
+Codec availability, DRM, SwiftUI presentation, real video rendering, and network-stall behavior still require module-specific and device-level validation.
