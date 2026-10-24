@@ -9,3 +9,5 @@ Run `swift test` on the development host, or run the `Framewright-Package` schem
 `FramewrightAVPlayerAdapterTests` covers session state, observation cleanup, replacement, stale callbacks, redaction, and real AVPlayer playback/failure using locally generated audio. Run the same tests on an iOS simulator. Tests do not depend on remote media.
 
 Codec availability, DRM, SwiftUI presentation, real video rendering, and network-stall behavior still require module-specific and device-level validation.
+
+Delivery tests cover capacity limits, atomic rejection, blocked sinks, concurrent flushes, pipeline changes, and recovery after overflow.

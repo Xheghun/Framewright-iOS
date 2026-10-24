@@ -295,3 +295,31 @@ private struct NotificationItem: @unchecked Sendable {
     source.detach()
     await source.flush()
 }
+
+@Test @MainActor func overflowRequiresDrainBeforeReattachment() async throws {
+    let url = try audioFixture()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let player = AVPlayer(url: url)
+    let pipeline = try DiagnosticEventPipeline()
+    var errors: [AVPlayerDiagnosticsError] = []
+    let configuration = AVPlayerDiagnosticsConfiguration(onDiagnosticsError: { error in
+        if let error = error as? AVPlayerDiagnosticsError { errors.append(error) }
+    })
+    let source = try FramewrightAVPlayer.attach(
+        player: player, pipeline: pipeline, sessionId: "overload", configuration: configuration)
+    for _ in 0..<600 { try source.startSession(sessionId: "overload") }
+    source.detach()
+    #expect(throws: AVPlayerDiagnosticsError.deliveryPending) {
+        try source.attach(pipeline: pipeline, sessionId: "too-early")
+    }
+    #expect(!source.isAttached)
+    await source.flush()
+    for _ in 0..<100 where errors.isEmpty { await Task.yield() }
+    #expect(errors == [.eventQueueOverflow(capacity: 1_024)])
+    #expect(try await pipeline.snapshot(sessionId: "overload").events.count == 1_023)
+    try source.attach(pipeline: pipeline, sessionId: "recovered")
+    source.detach()
+    await source.flush()
+    #expect(try await pipeline.snapshot(sessionId: "recovered").events.map(\.type) == [.sessionStart, .sessionEnd])
+    #expect(player.currentItem != nil)
+}

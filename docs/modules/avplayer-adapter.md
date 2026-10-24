@@ -72,7 +72,11 @@ Always complete the token, including cancelled seeks. A stale completion cannot 
 
 `AVPlayerDiagnosticsConfiguration` accepts application/device labels, URI sanitization, error-message inclusion, and an `onDiagnosticsError` handler. Defaults remove URL credentials, query strings, and fragments; local file locations and non-HTTP URLs are redacted. Paths remain visible on HTTP URLs; supply a custom sanitizer when those contain private data. Error messages are omitted by default.
 
-The diagnostics-error handler reports internal validation failures, closed pipelines, and sink failures. It does not change playback. Pipeline sinks must return quickly; slow sinks delay diagnostic delivery.
+The diagnostics-error handler reports internal validation failures, closed pipelines, sink failures, and delivery overflow. It does not change playback. Pipeline sinks must return quickly; slow sinks delay diagnostic delivery.
+
+Pending delivery is limited to 1,024 events per adapter, including events being published. Reattachment shares the same queue and preserves each event's original pipeline. A group of related events is accepted or rejected together.
+
+If capacity is exceeded, `onDiagnosticsError` receives `.eventQueueOverflow(capacity:)` once. Accepted events drain in order, but further events are rejected until recovery; affected session exports are incomplete and must not be treated as complete measurements. Playback continues. To recover, detach, wait for `flush()`, then attach with a new session ID. Reattachment before the overflowed queue drains throws `.deliveryPending`. A permanently blocked sink also blocks `flush()`; the adapter cannot cancel application sink code.
 
 ## Coverage
 
