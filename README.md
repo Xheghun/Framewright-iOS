@@ -44,3 +44,7 @@ These commands validate the package structure and compile the source targets on 
 - [Implementation plan](docs/implementation-plan.md)
 - [Test strategy](Tests/README.md)
 - [Example app scope](Examples/README.md)
+
+## Sample app
+
+The [SwiftUI sample](Examples/README.md) demonstrates AVPlayer attachment, playback controls, live diagnostics, and session export using a local package dependency. Open `Examples/FramewrightDemo/FramewrightDemo.xcodeproj` in Xcode.
