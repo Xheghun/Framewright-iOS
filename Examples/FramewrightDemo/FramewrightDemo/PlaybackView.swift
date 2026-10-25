@@ -6,137 +6,380 @@ struct PlaybackView: View {
     @StateObject private var model = PlaybackModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var stream = ""
+    @State private var mediaName = "Big Buck Bunny"
+    @State private var mediaKind = "Short film trailer"
+    @State private var showingMedia = false
+    @State private var showingPoster = true
+    @State private var posterURL = URL(string: "https://media.w3.org/2010/05/bunny/poster.png")
+    @State private var sourceError: String?
     @State private var document: SessionDocument?
     @State private var exporting = false
     @State private var preparingExport = false
 
+    private let accent = Color(red: 0.46, green: 0.82, blue: 0.84)
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    VideoPlayer(player: model.player)
-                        .aspectRatio(16 / 9, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    controls
-                    media
-                    diagnostics
+                VStack(alignment: .leading, spacing: 28) {
+                    player
+                    nowPlaying
+                    if let message = model.message {
+                        Label(message, systemImage: "exclamationmark.circle")
+                            .font(.footnote).foregroundStyle(.orange).textSelection(.enabled)
+                    }
+                    sessionLink
+                    Button {
+                        showingMedia = true
+                    } label: {
+                        Label("Choose video", systemImage: "rectangle.stack.badge.plus")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!model.connected)
                 }
-                .padding()
+                .frame(maxWidth: 760)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
+                .frame(maxWidth: .infinity)
             }
+            .background(Color(red: 0.055, green: 0.065, blue: 0.08))
             .navigationTitle("Framewright")
-            .task {
-                await model.connect()
-                if model.player.currentItem == nil { loadBundled("TestPattern") }
-                while !Task.isCancelled {
-                    model.refresh()
-                    do { try await Task.sleep(for: .milliseconds(300)) } catch { break }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { playbackMenu } }
+            .sheet(isPresented: $showingMedia) { mediaPicker }
+        }
+        .tint(accent)
+        .preferredColorScheme(.dark)
+        .task {
+            await model.connect()
+            if model.player.currentItem == nil { loadFilm("Big Buck Bunny", path: "bunny") }
+            while !Task.isCancelled {
+                model.refresh()
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { break }
+            }
+            await model.disconnect()
+        }
+        .onChange(of: model.playbackStatus) { status in
+            if status == "Playing" { showingPoster = false }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase != .active { model.pause() }
+        }
+        .fileExporter(
+            isPresented: $exporting, document: document, contentType: .json, defaultFilename: "framewright-session"
+        ) { result in
+            if case .failure = result { model.message = "Unable to save the session export." }
+        }
+    }
+
+    private var player: some View {
+        VideoPlayer(player: model.player)
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .background(.black)
+            .overlay {
+                if showingPoster, let posterURL {
+                    GeometryReader { geometry in
+                        AsyncImage(url: posterURL) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.black
+                        }
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                    }
+                    .overlay {
+                        Button {
+                            showingPoster = false
+                            model.play()
+                        } label: {
+                            Image(systemName: "play.fill")
+                                .font(.title2).foregroundStyle(.white)
+                                .frame(width: 60, height: 60)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .accessibilityLabel("Play \(mediaName)")
+                        .disabled(!model.connected)
+                    }
                 }
-                await model.disconnect()
             }
-            .onChange(of: scenePhase) { phase in
-                if phase != .active { model.pause() }
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.08))
+                    .allowsHitTesting(false)
             }
-            .fileExporter(
-                isPresented: $exporting, document: document, contentType: .json, defaultFilename: "framewright-session"
-            ) { result in
-                if case .failure = result { model.message = "Unable to save the session export." }
-            }
-        }
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(model.playbackStatus).font(.headline).accessibilityIdentifier("playbackStatus")
-                Spacer()
-                Text(
-                    "\(model.position.formatted(.number.precision(.fractionLength(0)))) / \(model.duration.formatted(.number.precision(.fractionLength(0)))) s"
-                ).monospacedDigit()
-            }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading) {
-                playbackButtons
-            }
-            .buttonStyle(.bordered)
-            .disabled(!model.connected || model.isSeeking)
-        }
-    }
-
-    @ViewBuilder private var playbackButtons: some View {
-        Button(action: model.play) { Label("Play", systemImage: "play.fill") }
-        Button(action: model.pause) { Label("Pause", systemImage: "pause.fill") }
-        Button("−5 s") { model.seek(by: -5) }
-        Button("+5 s") { model.seek(by: 5) }
-        Button("Replay", action: model.replay)
-    }
-
-    private var media: some View {
-        GroupBox("Media") {
-            VStack(alignment: .leading, spacing: 12) {
+    private var nowPlaying: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("NOW PLAYING")
+                .font(.caption2.weight(.semibold)).tracking(2).foregroundStyle(accent)
+            Text(mediaName).font(.title2.weight(.semibold))
+            ViewThatFits(in: .horizontal) {
                 HStack {
-                    Button("Test pattern") { loadBundled("TestPattern") }
-                    Button("Color bars") { loadBundled("ColorBars") }
+                    playbackStatus
+                    Spacer()
+                    Text(mediaKind).foregroundStyle(.secondary)
                 }
-                TextField("HTTPS video or HLS URL", text: $stream)
-                    .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .textFieldStyle(.roundedBorder).accessibilityIdentifier("streamURL")
-                Button("Load stream") { model.loadStream(stream) }
-                    .disabled(stream.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }.disabled(!model.connected)
+                VStack(alignment: .leading, spacing: 8) {
+                    playbackStatus
+                    Text(mediaKind).foregroundStyle(.secondary)
+                }
+            }
+            .font(.subheadline)
+        }
+    }
+
+    private var playbackStatus: some View {
+        Label {
+            Text(model.playbackStatus).accessibilityIdentifier("playbackStatus")
+        } icon: {
+            Circle().fill(model.playbackStatus == "Playing" ? accent : .secondary).frame(width: 6, height: 6)
+        }
+    }
+
+    private var sessionLink: some View {
+        NavigationLink {
+            diagnostics
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: model.diagnosticsIncomplete ? "exclamationmark.triangle" : "waveform.path.ecg")
+                    .font(.title3).foregroundStyle(model.diagnosticsIncomplete ? .orange : accent)
+                    .frame(width: 42, height: 42)
+                    .background(accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Session activity").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(
+                        model.diagnosticsIncomplete
+                            ? "Some diagnostics are incomplete" : "View events and export sessions"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var playbackMenu: some View {
+        Menu {
+            Button(action: model.play) { Label("Play", systemImage: "play") }
+            Button(action: model.pause) { Label("Pause", systemImage: "pause") }
+            Divider()
+            Button {
+                model.seek(by: -5)
+            } label: {
+                Label("Back 5 seconds", systemImage: "gobackward.5")
+            }
+            .disabled(model.isSeeking)
+            Button {
+                model.seek(by: 5)
+            } label: {
+                Label("Forward 5 seconds", systemImage: "goforward.5")
+            }
+            .disabled(model.isSeeking)
+            Button(action: model.replay) { Label("Replay as new session", systemImage: "arrow.counterclockwise") }
+                .disabled(model.isSeeking)
+        } label: {
+            Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44)
+        }
+        .accessibilityLabel("Playback actions")
+        .disabled(!model.connected)
+    }
+
+    private var mediaPicker: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    filmOption("Big Buck Bunny", detail: "Blender Foundation · 2008", path: "bunny")
+                    filmOption("Sintel", detail: "Blender Foundation · 2010", path: "sintel")
+                } header: {
+                    Text("Sample films")
+                } footer: {
+                    Text("Trailers stream over the internet. Choose an offline test video when disconnected.")
+                }
+                Section("Offline test videos") {
+                    mediaOption(
+                        "Test pattern", detail: "Motion and color · 12 seconds", resource: "TestPattern",
+                        icon: "play.rectangle")
+                    mediaOption(
+                        "Color bars", detail: "Static color reference · 12 seconds", resource: "ColorBars",
+                        icon: "rectangle.split.3x1")
+                }
+                Section {
+                    TextField("https://example.com/video.m3u8", text: $stream)
+                        .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .accessibilityLabel("Stream URL").accessibilityIdentifier("streamURL")
+                    Button("Open stream") {
+                        guard let url = PlaybackModel.streamURL(stream) else {
+                            sourceError = "Enter an HTTPS media URL without embedded credentials."
+                            return
+                        }
+                        model.load(url)
+                        showingPoster = false
+                        posterURL = nil
+                        mediaName = url.host ?? "Stream"
+                        mediaKind = "Online video"
+                        sourceError = nil
+                        showingMedia = false
+                    }.disabled(stream.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if let sourceError { Text(sourceError).font(.footnote).foregroundStyle(.orange) }
+                } header: {
+                    Text("Your stream")
+                } footer: {
+                    Text("Open an HTTPS video or HLS stream.")
+                }
+                Section("Credits") {
+                    creditLink("Big Buck Bunny — © 2008 Blender Foundation", url: "https://peach.blender.org/about/")
+                    creditLink("Sintel — © 2010 Blender Foundation", url: "https://durian.blender.org/about/")
+                    creditLink("Creative Commons Attribution 3.0", url: "https://creativecommons.org/licenses/by/3.0/")
+                    Text("Unmodified trailers and posters hosted by W3C.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Choose video")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { showingMedia = false } }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder private func creditLink(_ title: String, url: String) -> some View {
+        if let destination = URL(string: url) { Link(title, destination: destination) }
+    }
+
+    private func filmOption(_ title: String, detail: String, path: String) -> some View {
+        Button {
+            loadFilm(title, path: path)
+            showingMedia = false
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "film").font(.title3).frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if mediaName == title { Image(systemName: "checkmark.circle.fill") }
+            }
+            .padding(.vertical, 6)
+        }
+    }
+
+    private func loadFilm(_ title: String, path: String) {
+        guard let url = URL(string: "https://media.w3.org/2010/05/\(path)/trailer.mp4") else { return }
+        model.load(url)
+        posterURL = URL(string: "https://media.w3.org/2010/05/\(path)/poster.png")
+        showingPoster = true
+        mediaName = title
+        mediaKind = "Short film trailer"
+    }
+
+    private func mediaOption(_ title: String, detail: String, resource: String, icon: String) -> some View {
+        Button {
+            loadBundled(resource, title: title)
+            showingMedia = false
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.title3).frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if mediaName == title { Image(systemName: "checkmark.circle.fill") }
+            }
+            .padding(.vertical, 6)
+        }
     }
 
     private var diagnostics: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Diagnostics").font(.title2.bold())
-            Text("First-frame timing is unavailable with this player view.")
-                .font(.footnote).foregroundStyle(.secondary)
+        List {
             if let message = model.message {
-                Text(message).foregroundStyle(.red).textSelection(.enabled)
+                Section { Text(message).foregroundStyle(.orange).textSelection(.enabled) }
             }
             if model.diagnosticsIncomplete {
-                Label(
-                    "Diagnostics incomplete. Restart the app before a new validation run.",
-                    systemImage: "exclamationmark.triangle"
-                )
-                .foregroundStyle(.orange)
-            }
-            if !model.sessions.isEmpty {
-                Picker("Session", selection: $model.selectedSession) {
-                    ForEach(model.sessions, id: \.self) { id in
-                        Text(String(id.prefix(8))).tag(id)
-                    }
-                }.pickerStyle(.menu)
-                Button(preparingExport ? "Preparing export…" : "Export session JSON") {
-                    let id = model.selectedSession
-                    preparingExport = true
-                    Task {
-                        defer { preparingExport = false }
-                        do {
-                            document = SessionDocument(text: try await model.exportSession(id))
-                            exporting = true
-                        } catch { model.message = "Unable to export this session." }
-                    }
-                }.disabled(preparingExport || model.selectedSession.isEmpty)
-            }
-            Text("Latest 200 events · Last 10 sessions").font(.caption).foregroundStyle(.secondary)
-            LazyVStack(alignment: .leading, spacing: 10) {
-                ForEach(model.events.filter { $0.sessionId == model.selectedSession }.reversed(), id: \.eventId) {
-                    event in
-                    DisclosureGroup(event.type.rawValue) {
-                        Text(eventJSON(event)).font(.caption.monospaced()).textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                Section {
+                    Label(
+                        "Diagnostics incomplete. Restart the app before a new validation run.",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.orange)
                 }
             }
+            Section {
+                if model.sessions.isEmpty {
+                    Text("Events will appear after a video is loaded.").foregroundStyle(.secondary)
+                } else {
+                    Picker("Session", selection: $model.selectedSession) {
+                        ForEach(model.sessions, id: \.self) { id in
+                            Text(String(id.prefix(8))).tag(id)
+                        }
+                    }
+                    Button(action: exportSession) {
+                        Label(preparingExport ? "Preparing export…" : "Export JSON", systemImage: "square.and.arrow.up")
+                    }.disabled(preparingExport || model.selectedSession.isEmpty)
+                }
+            } header: {
+                Text("Session")
+            } footer: {
+                Text(
+                    "First-frame timing is unavailable with this player view. Exports include the session's retained events."
+                )
+            }
+            Section {
+                ForEach(model.events.filter { $0.sessionId == model.selectedSession }.reversed(), id: \.eventId) {
+                    event in
+                    DisclosureGroup {
+                        Text(eventJSON(event)).font(.caption.monospaced()).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(event.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .font(.subheadline.weight(.medium))
+                            Text(Date(timeIntervalSince1970: Double(event.metadata.timestampMs) / 1_000), style: .time)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Recent events")
+            } footer: {
+                Text("Latest 200 events · Last 10 sessions")
+            }
+        }
+        .navigationTitle("Session activity")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func exportSession() {
+        let id = model.selectedSession
+        preparingExport = true
+        Task {
+            defer { preparingExport = false }
+            do {
+                document = SessionDocument(text: try await model.exportSession(id))
+                exporting = true
+            } catch { model.message = "Unable to export this session." }
         }
     }
 
-    private func loadBundled(_ name: String) {
+    private func loadBundled(_ name: String, title: String) {
         guard let url = Bundle.main.url(forResource: name, withExtension: "mp4") else {
             model.message = "Bundled media is missing."
             return
         }
         model.load(url)
+        showingPoster = false
+        posterURL = nil
+        mediaName = title
+        mediaKind = "Bundled video"
     }
 
     private func eventJSON(_ event: DiagnosticEvent) -> String {
