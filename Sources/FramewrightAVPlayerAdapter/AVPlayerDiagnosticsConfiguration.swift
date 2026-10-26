@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public struct AVPlayerDiagnosticsConfiguration: Sendable {
@@ -9,9 +10,9 @@ public struct AVPlayerDiagnosticsConfiguration: Sendable {
     public var onDiagnosticsError: @MainActor @Sendable (any Error) -> Void
 
     public init(
-        deviceModel: String = "unknown",
+        deviceModel: String = AVPlayerDiagnosticsConfiguration.currentDeviceModel,
         osVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
-        appVersion: String = "unknown",
+        appVersion: String = AVPlayerDiagnosticsConfiguration.currentAppVersion,
         includeErrorMessages: Bool = false,
         sanitizeURI: @escaping @Sendable (String) -> String = AVPlayerDiagnosticsConfiguration.redactURI,
         onDiagnosticsError: @escaping @MainActor @Sendable (any Error) -> Void = { _ in }
@@ -22,6 +23,25 @@ public struct AVPlayerDiagnosticsConfiguration: Sendable {
         self.includeErrorMessages = includeErrorMessages
         self.sanitizeURI = sanitizeURI
         self.onDiagnosticsError = onDiagnosticsError
+    }
+
+    public static var currentDeviceModel: String {
+        #if targetEnvironment(simulator)
+            if let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !model.isEmpty {
+                return model
+            }
+        #endif
+        var system = utsname()
+        guard uname(&system) == 0 else { return "unknown" }
+        return withUnsafeBytes(of: &system.machine) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
+    }
+
+    public static var currentAppVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+            ?? "unknown"
     }
 
     public static func redactURI(_ value: String) -> String {

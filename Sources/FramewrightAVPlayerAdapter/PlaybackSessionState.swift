@@ -29,6 +29,7 @@ struct PlaybackSessionState: Sendable {
         var firstFrame = false
         var rebufferMs: Int64?
         var seeking = false
+        var control: PlaybackControl = .paused
     }
 
     private var session: Session?
@@ -66,23 +67,42 @@ struct PlaybackSessionState: Sendable {
         bufferedMs: Int64, at time: DiagnosticTime
     ) throws -> [DiagnosticEvent] {
         guard session != nil else { return [] }
+        let changed = session?.control != control
+        session?.control = control
+        let status: PlaybackStatus
         switch control {
         case .paused:
+            status = .paused
             playerState = ready ? .ready : .idle
+        case .waiting:
+            status = .waiting
+            playerState = .buffering
+        case .playing:
+            status = .playing
+            playerState = .ready
+        }
+        let transition = changed ? [try event(.playbackStateChanged(.init(status: status)), at: time)] : []
+        switch control {
+        case .paused:
             // Paused time is not a completed playback rebuffer.
             session?.rebufferMs = nil
-            return []
+            return transition
         case .playing:
-            playerState = .ready
-            return try finishRebuffer(at: time)
+            return try finishRebuffer(at: time) + transition
         case .waiting:
-            playerState = .buffering
             guard buffering, session?.firstFrame == true, session?.seeking == false,
                 session?.rebufferMs == nil
-            else { return [] }
+            else { return transition }
             session?.rebufferMs = time.monotonicMs
-            return [try event(.rebufferStart(RebufferStartPayload(bufferedMsAtStart: bufferedMs)), at: time)]
+            return try [event(.rebufferStart(RebufferStartPayload(bufferedMsAtStart: bufferedMs)), at: time)]
+                + transition
         }
+    }
+
+    mutating func positionJumped(to positionMs: Int64, at time: DiagnosticTime) throws -> [DiagnosticEvent] {
+        guard session != nil else { return [] }
+        session?.rebufferMs = nil
+        return [try event(.positionDiscontinuity(PositionDiscontinuityPayload(positionMs: positionMs)), at: time)]
     }
 
     mutating func beginSeek() {

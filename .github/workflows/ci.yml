@@ -72,6 +72,22 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/FramewrightDerivedData" \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Build SwiftUI sample
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+          BUILD_CONFIGURATION: ${{ matrix.configuration }}
+        run: |
+          set -euo pipefail
+          destination='generic/platform=iOS Simulator'
+          if [[ "$BUILD_PLATFORM" == "Device" ]]; then destination='generic/platform=iOS'; fi
+          xcodebuild build \
+            -project Examples/FramewrightDemo/FramewrightDemo.xcodeproj \
+            -scheme FramewrightDemo \
+            -configuration "$BUILD_CONFIGURATION" \
+            -destination "$destination" \
+            -derivedDataPath "$RUNNER_TEMP/FramewrightDemoBuild" \
+            CODE_SIGNING_ALLOWED=NO
+
   test:
     name: iOS Tests
     runs-on: macos-15
@@ -137,11 +153,26 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/FramewrightTestData" \
             -resultBundlePath "$RUNNER_TEMP/FramewrightTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
+      - name: Run sample integration tests
+        if: steps.tests.outputs.present == 'true'
+        env:
+          SIMULATOR_ID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project Examples/FramewrightDemo/FramewrightDemo.xcodeproj \
+            -scheme FramewrightDemo \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/FramewrightDemoTests" \
+            -resultBundlePath "$RUNNER_TEMP/FramewrightDemoTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
       - name: Upload test results
         if: always() && steps.tests.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ios-test-results
-          path: ${{ runner.temp }}/FramewrightTests.xcresult
+          path: |
+            ${{ runner.temp }}/FramewrightTests.xcresult
+            ${{ runner.temp }}/FramewrightDemoTests.xcresult
           if-no-files-found: warn
           retention-days: 7

@@ -153,9 +153,13 @@ private struct FailingSink: DiagnosticEventSink {
     let json = try String(contentsOf: url, encoding: .utf8)
     let codec = DiagnosticEventJSONCodec()
     let snapshot = try codec.decodeSession(json)
-    #expect(Set(snapshot.events.map(\.type)) == Set(EventType.allCases))
+    #expect(
+        Set(snapshot.events.map(\.type))
+            == Set(EventType.allCases).subtracting([.playbackStateChanged, .positionDiscontinuity]))
     let encoded = try codec.encodeSession(snapshot)
-    let originalObject = try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? NSDictionary)
+    let originalObject = try #require(
+        JSONSerialization.jsonObject(with: Data(json.utf8), options: .mutableContainers) as? NSMutableDictionary)
+    originalObject["schemaVersion"] = 3
     let encodedObject = try #require(JSONSerialization.jsonObject(with: Data(encoded.utf8)) as? NSDictionary)
     #expect(originalObject == encodedObject)
     for value in snapshot.events {
@@ -217,4 +221,26 @@ private struct FailingSink: DiagnosticEventSink {
     #expect(await pipeline.publish(value).liveDelivery == .noSubscribers)
     #expect(try await pipeline.snapshot(sessionId: "session").events == [value])
     await pipeline.close()
+}
+
+@Test func transportPayloadsRoundTripAndValidate() throws {
+    let codec = DiagnosticEventJSONCodec()
+    for payload in [
+        DiagnosticPayload.playbackStateChanged(.init(status: .paused)),
+        .playbackStateChanged(.init(status: .playing)),
+        .playbackStateChanged(.init(status: .waiting)),
+        .positionDiscontinuity(try .init(positionMs: 5000)),
+    ] {
+        let value = try event(payload)
+        let json = try codec.encodeEvent(value)
+        #expect(try codec.decodeEvent(json) == value)
+        let object = try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        #expect(object["schemaVersion"] as? Int == 3)
+        if value.type == .positionDiscontinuity {
+            #expect(throws: CodecError.self) {
+                try codec.decodeEvent(json.replacingOccurrences(of: "5000", with: "-1"))
+            }
+        }
+    }
+    #expect(throws: AnalyticsValidationError.self) { try PositionDiscontinuityPayload(positionMs: -1) }
 }

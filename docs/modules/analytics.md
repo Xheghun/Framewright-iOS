@@ -76,7 +76,7 @@ Unavailable timing ratios are `nil`, not zero. A summary carries the snapshot's 
 
 ## JSON and validation
 
-`DiagnosticEventJSONCodec` encodes and decodes schema version 2. Event envelopes use `{schemaVersion, event}`; session envelopes use `{schemaVersion, sessionId, truncated, events}`. Events have flat metadata plus `type` and `payload`. Field names, uppercase enum values, and explicit nullable payload fields follow the Android schema.
+`DiagnosticEventJSONCodec` encodes schema version 3 and decodes versions 2 and 3. Event envelopes use `{schemaVersion, event}`; session envelopes use `{schemaVersion, sessionId, truncated, events}`. Events have flat metadata plus `type` and `payload`. Existing fields retain the Android schema conventions. Version 3 adds `PLAYBACK_STATE_CHANGED` (`status`: `PAUSED`, `WAITING`, or `PLAYING`) and `POSITION_DISCONTINUITY` (`positionMs`). Version 2 readers need upgrading before consuming version 3 exports.
 
 All 15 Android event types are represented, including codec and DRM data. Their presence in the model does not imply those measurements are available from iOS. Adapters must not invent measurements; omit optional values, omit unavailable capability snapshots, or refrain from producing an event when required measurements are unavailable.
 

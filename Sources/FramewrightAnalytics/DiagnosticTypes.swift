@@ -1,12 +1,14 @@
 import Foundation
 
-public let diagnosticSchemaVersion = 2
+public let diagnosticSchemaVersion = 3
 
 public enum AnalyticsValidationError: Error, Equatable, Sendable {
     case invalidField(String)
 }
 
 public enum EventType: String, Codable, Sendable, CaseIterable {
+    case playbackStateChanged = "PLAYBACK_STATE_CHANGED"
+    case positionDiscontinuity = "POSITION_DISCONTINUITY"
     case sessionStart = "SESSION_START"
     case sessionEnd = "SESSION_END"
     case renderFirstFrame = "RENDER_FIRST_FRAME"

@@ -45,7 +45,7 @@ Detaching ends the active session and removes observations. It does not pause pl
 - Pausing does not end a session. Use `endSession(reason:)` for application-defined boundaries.
 - Replaying the same item requires `startSession()` before playback. Completion does not automatically start another session.
 
-`activeSessionID` identifies the current session. `playerState` uses analytics' idle/buffering/ready/ended states; paused ready items remain `.ready`. The schema has no separate pause or playback-state-change event.
+`activeSessionID` identifies the current session. `playerState` uses analytics' idle/buffering/ready/ended states; paused ready items remain `.ready`. `PLAYBACK_STATE_CHANGED` records transitions between paused, waiting, and playing, including native player controls. Initial paused state is omitted. These are observed states, not assertions of user intent; buffering recovery also returns to playing.
 
 ## First-frame timing
 
@@ -66,11 +66,11 @@ player.seek(to: target) { _ in
 }
 ```
 
-Always complete the token, including cancelled seeks. A stale completion cannot end a newer seek or affect a replacement item. The adapter does not infer seek intent from time jumps. Untracked seeks may appear as buffering, and stalls that do not transition AVPlayer into a buffering wait are not measured.
+Always complete the token, including cancelled seeks. A stale completion cannot end a newer seek or affect a replacement item. Native scrubbing and other timeline jumps emit `POSITION_DISCONTINUITY` with the observed destination position. This event does not infer user intent or seek completion. Untracked seeks may appear as buffering, and stalls that do not transition AVPlayer into a buffering wait are not measured.
 
 ## Configuration
 
-`AVPlayerDiagnosticsConfiguration` accepts application/device labels, URI sanitization, error-message inclusion, and an `onDiagnosticsError` handler. Defaults remove URL credentials, query strings, and fragments; local file locations and non-HTTP URLs are redacted. Paths remain visible on HTTP URLs; supply a custom sanitizer when those contain private data. Error messages are omitted by default.
+`AVPlayerDiagnosticsConfiguration` accepts application/device labels, URI sanitization, error-message inclusion, and an `onDiagnosticsError` handler. Device model defaults to the hardware identifier (for example `iPhone17,1`); app version comes from the main bundle, falling back to its build number or `unknown` when absent. Explicit overrides are supported. Defaults remove URL credentials, query strings, and fragments; local file locations and non-HTTP URLs are redacted. Paths remain visible on HTTP URLs; supply a custom sanitizer when those contain private data. Error messages are omitted by default.
 
 The diagnostics-error handler reports internal validation failures, closed pipelines, sink failures, and delivery overflow. It does not change playback. Pipeline sinks must return quickly; slow sinks delay diagnostic delivery.
 

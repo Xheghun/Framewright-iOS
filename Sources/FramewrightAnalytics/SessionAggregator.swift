@@ -25,7 +25,9 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let version = try values.decode(Int.self, forKey: .schemaVersion)
-        guard version == diagnosticSchemaVersion else { throw CodecError.unsupportedSchemaVersion(version) }
+        guard version == 2 || version == diagnosticSchemaVersion else {
+            throw CodecError.unsupportedSchemaVersion(version)
+        }
         try self.init(
             sessionId: values.decode(String.self, forKey: .sessionId),
             truncated: values.decode(Bool.self, forKey: .truncated),

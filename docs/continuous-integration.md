@@ -47,3 +47,5 @@ Release publication remains manual until implementation, tests, licensing, and c
 Pushing a tag makes that version visible to SPM immediately; the tag-triggered CI run is verification, not a publication gate. Do not tag unvalidated commits.
 
 After the first hosted run succeeds, configure branch protection to require `Swift Lint`, the four build checks, and `iOS Tests` before merging. Repository protection settings are managed separately from these workflow files.
+
+The SwiftUI sample is also built for each device/simulator and Debug/Release combination. The test job runs the sample's integration tests and uploads its result bundle alongside the package test results.

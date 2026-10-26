@@ -1,6 +1,8 @@
 import Foundation
 
 public enum DiagnosticPayload: Equatable, Sendable {
+    case playbackStateChanged(PlaybackStateChangedPayload)
+    case positionDiscontinuity(PositionDiscontinuityPayload)
     case sessionStart(SessionStartPayload)
     case sessionEnd(SessionEndPayload)
     case renderFirstFrame(RenderFirstFramePayload)
@@ -19,6 +21,8 @@ public enum DiagnosticPayload: Equatable, Sendable {
 
     public var type: EventType {
         switch self {
+        case .playbackStateChanged: .playbackStateChanged
+        case .positionDiscontinuity: .positionDiscontinuity
         case .sessionStart: .sessionStart
         case .sessionEnd: .sessionEnd
         case .renderFirstFrame: .renderFirstFrame
@@ -59,6 +63,10 @@ public struct DiagnosticEvent: Codable, Equatable, Sendable {
         let rawType = try values.decode(String.self, forKey: .type)
         guard let type = EventType(rawValue: rawType) else { throw CodecError.unknownEventType(rawType) }
         switch type {
+        case .playbackStateChanged:
+            payload = .playbackStateChanged(try values.decode(PlaybackStateChangedPayload.self, forKey: .payload))
+        case .positionDiscontinuity:
+            payload = .positionDiscontinuity(try values.decode(PositionDiscontinuityPayload.self, forKey: .payload))
         case .sessionStart: payload = .sessionStart(try values.decode(SessionStartPayload.self, forKey: .payload))
         case .sessionEnd: payload = .sessionEnd(try values.decode(SessionEndPayload.self, forKey: .payload))
         case .renderFirstFrame:
@@ -86,6 +94,8 @@ public struct DiagnosticEvent: Codable, Equatable, Sendable {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(type, forKey: .type)
         switch payload {
+        case .playbackStateChanged(let value): try values.encode(value, forKey: .payload)
+        case .positionDiscontinuity(let value): try values.encode(value, forKey: .payload)
         case .sessionStart(let value): try values.encode(value, forKey: .payload)
         case .sessionEnd(let value): try values.encode(value, forKey: .payload)
         case .renderFirstFrame(let value): try values.encode(value, forKey: .payload)
