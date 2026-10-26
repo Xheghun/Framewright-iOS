@@ -71,6 +71,25 @@ import Testing
         try await Task.sleep(for: .milliseconds(50))
     }
     #expect(model.player.currentTime().seconds >= 0.1)
+    model.player.pause()
+    model.player.play()
+    _ = await model.player.seek(to: CMTime(seconds: 5, preferredTimescale: 600))
+    try await Task.sleep(for: .milliseconds(100))
+    let activity = try DiagnosticEventJSONCodec().decodeSession(await model.exportSession(initial))
+    let statuses = activity.events.compactMap { event -> PlaybackStatus? in
+        guard case .playbackStateChanged(let payload) = event.payload else { return nil }
+        return payload.status
+    }
+    #expect(statuses.contains(.paused))
+    #expect(statuses.filter { $0 == .playing }.count >= 2)
+    #expect(activity.events.contains { $0.type == .positionDiscontinuity })
+    guard case .sessionStart(let start) = activity.events.first?.payload else {
+        Issue.record("Missing session metadata")
+        await model.disconnect()
+        return
+    }
+    #expect(start.deviceModel != "unknown")
+    #expect(start.appVersion != "unknown")
     model.replay()
     #expect(model.selectedSession != initial)
     model.pause()

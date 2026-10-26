@@ -8,7 +8,7 @@ Use **Choose video** to select **Big Buck Bunny**, **Sintel**, an offline test v
 
 ## Measurement limits
 
-SwiftUI's `VideoPlayer` does not provide a confirmed first-render callback. This sample therefore does not publish first-frame events or claim first-frame-dependent rebuffer measurements. Readiness and visible progress are not substituted for those metrics. Use the **Playback actions** menu's seek and replay actions for diagnostic runs; gestures in the native player controls bypass those explicit hooks.
+SwiftUI's `VideoPlayer` does not provide a confirmed first-render callback. This sample therefore does not publish first-frame events or claim first-frame-dependent rebuffer measurements. Readiness and visible progress are not substituted for those metrics. Pause/resume transitions and timeline jumps from native controls appear in Session activity. Timeline jumps are recorded as `POSITION_DISCONTINUITY` because AVPlayer does not identify their cause. The menu’s seek hooks additionally exclude seek-related buffering.
 
 Default URI sanitization removes credentials, queries, fragments, and local paths. HTTP URL paths remain visible in exports. Diagnostic delivery errors show an incomplete-data warning; restart the app before another validation run.
 

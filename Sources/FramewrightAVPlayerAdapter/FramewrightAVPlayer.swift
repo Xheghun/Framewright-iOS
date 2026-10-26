@@ -203,6 +203,20 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         observe(AVPlayerItem.didPlayToEndTimeNotification, item: item, token: token) { source, _ in
             source.process { try $0.end(reason: .playbackEnded, at: .now) }
         }
+        let jumpToken = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.timeJumpedNotification, object: item, queue: nil
+        ) { [weak self] notification in
+            guard let item = notification.object as? AVPlayerItem else { return }
+            let seconds = item.currentTime().seconds
+            guard seconds.isFinite, seconds >= 0 else { return }
+            let position = DiagnosticTime.milliseconds(seconds)
+            let time = DiagnosticTime.now
+            deliverOnMain { [weak self] in
+                guard let self, self.itemID == token, self.isAttached else { return }
+                self.process { try $0.positionJumped(to: position, at: time) }
+            }
+        }
+        itemObservations.addNotification(jumpToken)
         let failureToken = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: nil
         ) { [weak self] notification in

@@ -7,7 +7,7 @@ public enum CodecError: Error, Equatable, Sendable {
     case invalidPayload(String)
 }
 
-/// Encodes schema-v2 envelopes using Android-compatible field names and enum values.
+/// Encodes schema-v3 envelopes and accepts schema-v2 histories.
 /// Invalid input throws a typed CodecError. Unknown object fields are ignored.
 public struct DiagnosticEventJSONCodec: Sendable {
     private struct Envelope: Codable {
@@ -24,7 +24,9 @@ public struct DiagnosticEventJSONCodec: Sendable {
         init(from decoder: any Decoder) throws {
             let values = try decoder.container(keyedBy: CodingKeys.self)
             let version = try values.decode(Int.self, forKey: .schemaVersion)
-            guard version == diagnosticSchemaVersion else { throw CodecError.unsupportedSchemaVersion(version) }
+            guard version == 2 || version == diagnosticSchemaVersion else {
+                throw CodecError.unsupportedSchemaVersion(version)
+            }
             schemaVersion = version
             event = try values.decode(DiagnosticEvent.self, forKey: .event)
         }

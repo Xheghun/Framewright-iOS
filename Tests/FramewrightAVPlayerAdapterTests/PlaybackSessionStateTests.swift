@@ -25,7 +25,10 @@ private func start(_ state: inout PlaybackSessionState, prepared: Int64? = 0) th
 @Test func bufferingDeduplicatesAndExcludesStartupAndSeek() throws {
     var state = PlaybackSessionState()
     _ = try start(&state)
-    #expect(try state.update(control: .waiting, ready: false, buffering: true, bufferedMs: 0, at: time(1)).isEmpty)
+    #expect(
+        try state.update(control: .waiting, ready: false, buffering: true, bufferedMs: 0, at: time(1)).map(\.type) == [
+            .playbackStateChanged
+        ])
     _ = try state.firstFrame(at: time(10))
     #expect(
         try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 5, at: time(20)).map(\.type) == [
@@ -36,7 +39,10 @@ private func start(_ state: inout PlaybackSessionState, prepared: Int64? = 0) th
     #expect(resumed.first?.payload == .rebufferEnd(try RebufferEndPayload(durationMs: 30)))
     state.beginSeek()
     _ = try state.update(control: .playing, ready: true, buffering: false, bufferedMs: 100, at: time(60))
-    #expect(try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(70)).isEmpty)
+    #expect(
+        try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(70)).map(\.type) == [
+            .playbackStateChanged
+        ])
     state.finishSeek()
     #expect(
         try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(80)).map(\.type) == [
@@ -62,7 +68,40 @@ private func start(_ state: inout PlaybackSessionState, prepared: Int64? = 0) th
     _ = try start(&state)
     _ = try state.firstFrame(at: time(1))
     _ = try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(10))
-    #expect(try state.update(control: .paused, ready: true, buffering: false, bufferedMs: 0, at: time(20)).isEmpty)
     #expect(
-        try state.update(control: .playing, ready: true, buffering: false, bufferedMs: 100, at: time(1_000)).isEmpty)
+        try state.update(control: .paused, ready: true, buffering: false, bufferedMs: 0, at: time(20)).map(\.type) == [
+            .playbackStateChanged
+        ])
+    #expect(
+        try state.update(control: .playing, ready: true, buffering: false, bufferedMs: 100, at: time(1_000)).map(\.type)
+            == [.playbackStateChanged])
+}
+
+@Test func transportTransitionsDeduplicateAndStopAfterSessionEnd() throws {
+    var state = PlaybackSessionState()
+    _ = try start(&state)
+    func update(_ control: PlaybackControl) throws -> [DiagnosticEvent] {
+        try state.update(control: control, ready: true, buffering: false, bufferedMs: 0, at: time(10))
+    }
+    #expect(try update(.paused).isEmpty)
+    for control in [PlaybackControl.playing, .paused, .playing] {
+        let events = try update(control)
+        let status: PlaybackStatus = control == .playing ? .playing : .paused
+        #expect(events.map(\.payload) == [.playbackStateChanged(.init(status: status))])
+        #expect(try update(control).isEmpty)
+    }
+    #expect(try state.positionJumped(to: 5000, at: time(20)).map(\.type) == [.positionDiscontinuity])
+    _ = try state.end(reason: .released, at: time(30))
+    #expect(try update(.paused).isEmpty)
+    #expect(try state.positionJumped(to: 0, at: time(40)).isEmpty)
+}
+
+@Test func deviceMetadataDefaultsAndOverrides() {
+    let defaults = AVPlayerDiagnosticsConfiguration()
+    #expect(!defaults.deviceModel.isEmpty)
+    #expect(defaults.deviceModel != "unknown")
+    #expect(defaults.osVersion != "unknown")
+    let custom = AVPlayerDiagnosticsConfiguration(deviceModel: "custom", osVersion: "os", appVersion: "1.2")
+    #expect(custom.deviceModel == "custom")
+    #expect(custom.appVersion == "1.2")
 }

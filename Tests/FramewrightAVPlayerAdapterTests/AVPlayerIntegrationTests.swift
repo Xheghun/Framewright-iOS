@@ -120,7 +120,7 @@ private func audioFixture() throws -> URL {
     player.play()
     try await waitUntil { source.activeSessionID == nil }
     await source.flush()
-    let events = try await pipeline.snapshot(sessionId: "failure").events
+    let events = try await pipeline.snapshot(sessionId: "failure").events.filter { $0.type != .playbackStateChanged }
     #expect(events.map(\.type) == [.sessionStart, .playbackError, .sessionEnd])
     guard case .playbackError(let error) = events[1].payload else {
         Issue.record("Missing playback error")
@@ -322,4 +322,23 @@ private struct NotificationItem: @unchecked Sendable {
     await source.flush()
     #expect(try await pipeline.snapshot(sessionId: "recovered").events.map(\.type) == [.sessionStart, .sessionEnd])
     #expect(player.currentItem != nil)
+}
+
+@Test @MainActor func timeJumpsIgnoreReplacedItemsAndDetachedObservers() async throws {
+    let url = try audioFixture()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let old = AVPlayerItem(url: url)
+    let current = AVPlayerItem(url: url)
+    let player = AVPlayer(playerItem: old)
+    let pipeline = try DiagnosticEventPipeline()
+    let source = try FramewrightAVPlayer.attach(player: player, pipeline: pipeline)
+    player.replaceCurrentItem(with: current)
+    let id = try #require(source.activeSessionID)
+    NotificationCenter.default.post(name: AVPlayerItem.timeJumpedNotification, object: old)
+    NotificationCenter.default.post(name: AVPlayerItem.timeJumpedNotification, object: current)
+    source.detach()
+    NotificationCenter.default.post(name: AVPlayerItem.timeJumpedNotification, object: current)
+    await source.flush()
+    let jumps = try await pipeline.snapshot(sessionId: id).events.filter { $0.type == .positionDiscontinuity }
+    #expect(jumps.count == 1)
 }
