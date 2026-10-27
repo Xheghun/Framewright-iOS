@@ -244,3 +244,14 @@ private struct FailingSink: DiagnosticEventSink {
     }
     #expect(throws: AnalyticsValidationError.self) { try PositionDiscontinuityPayload(positionMs: -1) }
 }
+
+@Test func deviceNameIsOptionalAndRoundTrips() throws {
+    let codec = DiagnosticEventJSONCodec()
+    let value = try event(
+        .sessionStart(.init(mediaUri: "https://example.com", deviceModel: "iPhone17,1", deviceName: "iPhone 16 Pro")))
+    #expect(try codec.decodeEvent(codec.encodeEvent(value)) == value)
+    let legacy = try event(.sessionStart(.init(mediaUri: "https://example.com", deviceModel: "iPhone17,1")))
+    let json = try codec.encodeEvent(legacy)
+    #expect(!json.contains("deviceName"))
+    #expect(try codec.decodeEvent(json) == legacy)
+}

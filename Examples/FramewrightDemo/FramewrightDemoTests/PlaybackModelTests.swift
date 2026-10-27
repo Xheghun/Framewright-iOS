@@ -89,6 +89,7 @@ import Testing
         return
     }
     #expect(start.deviceModel != "unknown")
+    #expect(start.deviceName != nil)
     #expect(start.appVersion != "unknown")
     model.replay()
     #expect(model.selectedSession != initial)

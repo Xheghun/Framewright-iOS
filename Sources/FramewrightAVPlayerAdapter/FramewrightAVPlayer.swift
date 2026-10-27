@@ -282,7 +282,7 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         return try SessionStartPayload(
             mediaUri: configuration.sanitizeURI(uri),
             deviceModel: configuration.deviceModel, osVersion: configuration.osVersion,
-            appVersion: configuration.appVersion)
+            appVersion: configuration.appVersion, deviceName: configuration.deviceName)
     }
 
     private func process(_ operation: (inout PlaybackSessionState) throws -> [DiagnosticEvent]) {

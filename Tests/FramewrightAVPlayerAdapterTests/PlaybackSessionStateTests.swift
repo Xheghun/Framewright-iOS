@@ -105,3 +105,12 @@ private func start(_ state: inout PlaybackSessionState, prepared: Int64? = 0) th
     #expect(custom.deviceModel == "custom")
     #expect(custom.appVersion == "1.2")
 }
+
+@Test func readableDeviceNamesHaveSafeFallbacks() {
+    #expect(DeviceNames.name(for: "iPhone17,1") == "iPhone 16 Pro")
+    #expect(DeviceNames.name(for: "iPad16,3") == "iPad Pro (11-inch) (M4)")
+    #expect(DeviceNames.name(for: "iPhone99,1") == "iPhone99,1")
+    #expect(AVPlayerDiagnosticsConfiguration(deviceModel: "iPhone17,1").deviceName == "iPhone 16 Pro")
+    #expect(
+        AVPlayerDiagnosticsConfiguration(deviceModel: "custom", deviceName: "Test device").deviceName == "Test device")
+}

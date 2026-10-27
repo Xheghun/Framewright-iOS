@@ -70,7 +70,7 @@ Always complete the token, including cancelled seeks. A stale completion cannot 
 
 ## Configuration
 
-`AVPlayerDiagnosticsConfiguration` accepts application/device labels, URI sanitization, error-message inclusion, and an `onDiagnosticsError` handler. Device model defaults to the hardware identifier (for example `iPhone17,1`); app version comes from the main bundle, falling back to its build number or `unknown` when absent. Explicit overrides are supported. Defaults remove URL credentials, query strings, and fragments; local file locations and non-HTTP URLs are redacted. Paths remain visible on HTTP URLs; supply a custom sanitizer when those contain private data. Error messages are omitted by default.
+`AVPlayerDiagnosticsConfiguration` accepts application/device labels, URI sanitization, error-message inclusion, and an `onDiagnosticsError` handler. Device model defaults to the hardware identifier (for example `iPhone17,1`); app version comes from the main bundle, falling back to its build number or `unknown` when absent. Session metadata also includes `deviceName`, resolved using a bundled DeviceKit 5.9.0 mapping. Unknown identifiers are retained as the display name. Explicit overrides are supported; no user-assigned device name is collected. Defaults remove URL credentials, query strings, and fragments; local file locations and non-HTTP URLs are redacted. Paths remain visible on HTTP URLs; supply a custom sanitizer when those contain private data. Error messages are omitted by default.
 
 The diagnostics-error handler reports internal validation failures, closed pipelines, sink failures, and delivery overflow. It does not change playback. Pipeline sinks must return quickly; slow sinks delay diagnostic delivery.
 

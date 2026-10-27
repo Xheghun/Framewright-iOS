@@ -4,7 +4,7 @@ Framewright is an attach-first diagnostics toolkit for iOS video playback, distr
 
 Your application retains ownership of player creation, configuration, playback control, and lifecycle.
 
-> **Development status:** Analytics and AVPlayer integration are available. The diagnostics overlay and remaining optional modules are not yet implemented.
+> **Development status:** Analytics, AVPlayer integration, and the SwiftUI diagnostics overlay are available. Bandwidth, codec, DRM, and storage modules remain unimplemented.
 
 ## Modules
 
@@ -17,7 +17,7 @@ The package defines the following products and module responsibilities:
 | `FramewrightBandwidthMonitor` | Bandwidth and transfer telemetry |
 | `FramewrightCodecInspector` | Media-format and codec inspection |
 | `FramewrightDRMInspector` | DRM diagnostics |
-| `FramewrightDiagnosticsOverlay` | SwiftUI diagnostics UI driven by the diagnostic event stream |
+| [`FramewrightDiagnosticsOverlay`](docs/modules/diagnostics-overlay.md) | SwiftUI session metrics, event history, and export |
 | `FramewrightStorage` | Session persistence and JSON export |
 
 Each product is declared separately so applications can select the modules they need. Feature modules depend on `FramewrightAnalytics`.
