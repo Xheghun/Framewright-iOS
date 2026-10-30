@@ -49,13 +49,13 @@ Detaching ends the active session and removes observations. It does not pause pl
 
 ## First-frame timing
 
-Preparation time is only available when the host calls `recordPreparationStarted(for:)`. If the presentation component provides a confirmed rendering signal, forward it with `recordFirstFrame(for:)`. The adapter rejects duplicate, stale-item, and untracked first-frame reports.
+Preparation time is only available when the host calls `recordPreparationStarted(for:)`. If the presentation component provides a confirmed rendering signal, forward it with `recordFirstFrame(for:)`. For AVPlayerViewController or AVPlayerLayer `isReadyForDisplay`, pass `source: .readyForDisplay`. This identifies first-frame readiness, not exact presentation time. The adapter rejects duplicate, stale-item, and untracked first-frame reports.
 
-`AVPlayer.timeControlStatus == .playing` and `AVPlayerItem.status == .readyToPlay` do not establish that a video frame was rendered. Without a host rendering signal, first-frame timing and first-frame-dependent rebuffer summaries remain unavailable. Audio playback does not generate synthetic video-frame events.
+`AVPlayer.timeControlStatus == .playing` and `AVPlayerItem.status == .readyToPlay` do not establish that a video frame was rendered. Without a host rendering or explicitly identified display-readiness signal, first-frame timing and dependent rebuffer summaries remain unavailable. Audio playback does not generate synthetic video-frame events.
 
 ## Buffering and seeks
 
-After a reported first frame, waiting to minimize stalls or evaluate buffering begins a rebuffer interval. Returning to playing completes it. Startup waits, waits with no item, and explicitly tracked seeks are excluded. Pausing abandons the open interval so paused time is not counted; terminal session events close an active interval.
+Display-readiness reports additionally require playback to have started before rebuffer tracking. After a reported first frame, waiting to minimize stalls or evaluate buffering begins a rebuffer interval. Returning to playing completes it. Startup waits, waits with no item, and explicitly tracked seeks are excluded. Pausing abandons the open interval so paused time is not counted; terminal session events close an active interval.
 
 Track application-controlled seeks around the host's seek operation:
 
@@ -91,3 +91,9 @@ If capacity is exceeded, `onDiagnosticsError` receives `.eventQueueOverflow(capa
 Codec, DRM, track-selection, transfer, and dropped-frame measurements are not emitted by this adapter version.
 
 Reference: Apple's [playback-control states](https://developer.apple.com/documentation/avfoundation/avplayer/timecontrolstatus-swift.enum), [item notifications](https://developer.apple.com/documentation/avfoundation/avplayeritem), and [display-readiness semantics](https://developer.apple.com/documentation/avfoundation/avplayerlayer/isreadyfordisplay).
+
+## Dropped frames
+
+The adapter reads `numberOfDroppedVideoFrames` from AVPlayer access-log events when logs are added, playback state changes, or a session explicitly ends, is replaced, or detaches. Reports use counter deltas so repeated reads and replay baselines do not duplicate frames. Negative counters and missing logs remain unavailable; zero is emitted only for a known counter. Updates follow access-log availability and are not per-frame notifications. Local files and some progressive streams do not expose these counters.
+
+References: [AVPlayerViewController display readiness](https://developer.apple.com/documentation/avkit/avplayerviewcontroller/isreadyfordisplay) and [AVPlayer dropped-video-frame counters](https://developer.apple.com/documentation/avfoundation/avplayeritemaccesslogevent/numberofdroppedvideoframes).

@@ -8,7 +8,7 @@ Use **Choose video** to select **Big Buck Bunny**, **Sintel**, an offline test v
 
 ## Measurement limits
 
-SwiftUI's `VideoPlayer` does not provide a confirmed first-render callback. This sample therefore does not publish first-frame events or claim first-frame-dependent rebuffer measurements. Readiness and visible progress are not substituted for those metrics. Pause/resume transitions and timeline jumps from native controls appear in Diagnostics. Timeline jumps are recorded as `POSITION_DISCONTINUITY` because AVPlayer does not identify their cause. The menu’s seek hooks additionally exclude seek-related buffering.
+The SwiftUI sample embeds AVPlayerViewController and reports its first-video-frame-ready signal. The metric is labeled **First frame ready** and exported with `source: READY_FOR_DISPLAY`; it measures readiness for presentation, not the exact screen presentation time. Rebuffer tracking begins after readiness and playback have both occurred. Dropped frames come from AVPlayer access logs when available. Local files and some progressive streams provide no counter and remain unavailable. Select **Apple HLS test stream** to inspect streaming counters; zero is shown only when AVPlayer reports a known count. Pause/resume transitions and timeline jumps from native controls appear in Diagnostics. Timeline jumps are recorded as `POSITION_DISCONTINUITY` because AVPlayer does not identify their cause. The menu’s seek hooks additionally exclude seek-related buffering.
 
 Default URI sanitization removes credentials, queries, fragments, and local paths. HTTP URL paths remain visible in exports. Diagnostic delivery errors show an incomplete-data warning; restart the app before another validation run.
 
@@ -20,7 +20,7 @@ For physical-device validation:
 
 1. Play both bundled videos. Verify visible motion on the test pattern, pause/resume, seeking, natural completion, and replay. Confirm each replacement/replay has a distinct session and the previous session ends once.
 2. Background the app during playback and during replay. Verify it remains paused after returning and does not resume from a stale seek completion.
-3. Load an HTTPS HLS stream you control. After playback starts, interrupt its segment delivery, wait for buffered content to drain, and restore delivery. Observe Waiting/Playing transitions and recovery. This checks player behavior; it does not validate first-frame timing or rebuffer summaries.
+3. Load an HTTPS HLS stream you control. After playback starts, interrupt its segment delivery, wait for buffered content to drain, and restore delivery. Observe Waiting/Playing transitions and recovery. Confirm the rebuffer count increases after recovery; startup and explicitly tracked seeks must not count as rebuffers.
 4. Export both a replaced and completed session. Check the session IDs, terminal reasons, URI redaction, and any truncation/incomplete-data warnings.
 
 Simulator tests do not establish physical-device rendering or network-stall behavior. Record device, OS version, stream, and observed results when performing these checks.

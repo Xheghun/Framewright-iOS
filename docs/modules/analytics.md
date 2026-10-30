@@ -97,3 +97,5 @@ Exports include supplied URIs, messages, and diagnostic identifiers. Analytics d
 The package targets iOS 16 or later with Swift tools 6.0. macOS 13 is declared for host-side compilation and testing of the player-independent analytics module; this does not establish macOS support for future UI or player adapters.
 
 Run `swift test` for host tests, or use Xcode's `Framewright-Package` scheme to run the same tests on an iOS simulator. CI runs simulator tests and strict Swift style checks alongside Debug/Release simulator/device builds.
+
+First-frame payloads optionally identify `source: READY_FOR_DISPLAY` when the host reports video presentation readiness. Omitted `source` retains the original `RENDERED` meaning. Consumers must distinguish readiness timing from confirmed rendering time.

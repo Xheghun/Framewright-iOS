@@ -1,4 +1,4 @@
-import AVKit
+@preconcurrency import AVKit
 import FramewrightDiagnosticsOverlay
 import SwiftUI
 
@@ -79,7 +79,8 @@ struct PlaybackView: View {
     }
 
     private var player: some View {
-        VideoPlayer(player: model.player)
+        InstrumentedVideoPlayer(model: model, session: model.renderingSession)
+            .id(model.renderingSession)
             .aspectRatio(16 / 9, contentMode: .fit)
             .background(.black)
             .overlay {
@@ -179,6 +180,20 @@ struct PlaybackView: View {
                     Text("Sample films")
                 } footer: {
                     Text("Trailers stream over the internet. Choose an offline test video when disconnected.")
+                }
+                Section("Streaming diagnostics") {
+                    Button("Apple HLS test stream") {
+                        model.loadStream(
+                            "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8"
+                        )
+                        showingPoster = false
+                        posterURL = nil
+                        mediaName = "Apple Bip Bop"
+                        mediaKind = "HLS test stream"
+                        showingMedia = false
+                    }
+                    Text("Use HLS to inspect access-log counters. Requires an internet connection.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Offline test videos") {
                     mediaOption(
@@ -289,4 +304,40 @@ struct PlaybackView: View {
         mediaKind = "Bundled video"
     }
 
+}
+
+struct InstrumentedVideoPlayer: UIViewControllerRepresentable {
+    let model: PlaybackModel
+    let session: String
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        let item = model.player.currentItem
+        controller.player = model.player
+        context.coordinator.observation = controller.observe(\.isReadyForDisplay, options: [.initial, .new]) {
+            [weak controller, weak model] _, change in
+            guard change.newValue == true else { return }
+            Task { @MainActor in
+                guard let controller, controller.isReadyForDisplay, let item,
+                    controller.player?.currentItem === item
+                else { return }
+                model?.firstFrameReady(for: item, session: session)
+            }
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {}
+
+    static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: Coordinator) {
+        coordinator.observation?.invalidate()
+        coordinator.observation = nil
+        controller.player = nil
+    }
+
+    final class Coordinator {
+        var observation: NSKeyValueObservation?
+    }
 }

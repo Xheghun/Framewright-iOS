@@ -10,6 +10,7 @@ final class PlaybackModel: ObservableObject {
     @Published private(set) var connected = false
     @Published private(set) var sessions: [String] = []
     @Published var selectedSession = ""
+    @Published private(set) var renderingSession = ""
     @Published var message: String?
     @Published private(set) var playbackStatus = "Paused"
     @Published private(set) var position = 0.0
@@ -80,7 +81,10 @@ final class PlaybackModel: ObservableObject {
         do {
             try diagnostics.recordPreparationStarted(for: item)
             player.replaceCurrentItem(with: item)
-            if let id = diagnostics.activeSessionID { selectedSession = id }
+            if let id = diagnostics.activeSessionID {
+                selectedSession = id
+                renderingSession = id
+            }
             message = nil
             if autoplay { player.play() }
             refresh()
@@ -127,6 +131,7 @@ final class PlaybackModel: ObservableObject {
             player.pause()
             try diagnostics.startSession()
             selectedSession = diagnostics.activeSessionID ?? ""
+            renderingSession = selectedSession
             if let item = player.currentItem { try diagnostics.recordPreparationStarted(for: item) }
             seek(to: 0, playAfter: true)
         } catch { message = String(describing: error) }
@@ -156,6 +161,11 @@ final class PlaybackModel: ObservableObject {
                 }
             }
         } catch { message = String(describing: error) }
+    }
+
+    func firstFrameReady(for item: AVPlayerItem, session: String) {
+        guard diagnostics?.activeSessionID == session else { return }
+        diagnostics?.recordFirstFrame(for: item, source: .readyForDisplay)
     }
 
     func refresh() {

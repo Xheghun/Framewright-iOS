@@ -25,6 +25,7 @@ public final class FramewrightAVPlayer: PlayerEventSource {
     private var nextSessionID: String?
     private var seekToken: AVPlayerSeekToken?
     private var state = PlaybackSessionState()
+    private var droppedFrames = DroppedFrameCounter()
     private var writer: OrderedEventWriter?
 
     public var isAttached: Bool { attachmentID != nil }
@@ -87,6 +88,7 @@ public final class FramewrightAVPlayer: PlayerEventSource {
 
     public func detach() {
         guard isAttached else { return }
+        sampleAccessLog()
         attachmentID = nil
         itemID = nil
         playerObservations.cancel()
@@ -106,6 +108,7 @@ public final class FramewrightAVPlayer: PlayerEventSource {
     }
 
     public func endSession(reason: SessionEndReason = .userStopped) {
+        sampleAccessLog()
         process { try $0.end(reason: reason, at: .now) }
         seekToken = nil
     }
@@ -115,6 +118,10 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         guard isAttached else { throw AVPlayerDiagnosticsError.notAttached }
         try validate(sessionId)
         guard let item = observedItem, player.currentItem === item else { throw AVPlayerDiagnosticsError.noCurrentItem }
+        sampleAccessLog()
+        droppedFrames.reset(
+            baseline: item.accessLog()?.events.map(\.numberOfDroppedVideoFrames) ?? [],
+            at: DiagnosticTime.now.monotonicMs)
         seekToken = nil
         let payload = try sessionPayload(for: item)
         writer?.write(try state.start(id: sessionId, payload: payload, preparedMs: nil, at: .now))
@@ -134,12 +141,12 @@ public final class FramewrightAVPlayer: PlayerEventSource {
         }
     }
 
-    /// Call only from a host rendering signal. Playback readiness alone is insufficient.
+    /// Report a host rendering signal or explicitly identified first-frame display readiness.
     @discardableResult
-    public func recordFirstFrame(for item: AVPlayerItem) -> Bool {
+    public func recordFirstFrame(for item: AVPlayerItem, source: FirstFrameSource = .rendered) -> Bool {
         guard isAttached, observedItem === item, player.currentItem === item else { return false }
         do {
-            let events = try state.firstFrame(at: .now)
+            let events = try state.firstFrame(at: .now, source: source)
             writer?.write(events)
             return !events.isEmpty
         } catch {
@@ -168,6 +175,10 @@ public final class FramewrightAVPlayer: PlayerEventSource {
 
     private func replaceItem(_ item: AVPlayerItem?) {
         guard observedItem !== item else { return }
+        sampleAccessLog()
+        droppedFrames.reset(
+            baseline: item?.accessLog()?.events.map(\.numberOfDroppedVideoFrames) ?? [],
+            at: DiagnosticTime.now.monotonicMs)
         itemObservations.cancel()
         itemID = nil
         process { try $0.end(reason: .replaced, at: .now) }
@@ -201,7 +212,11 @@ public final class FramewrightAVPlayer: PlayerEventSource {
                 }
             })
         observe(AVPlayerItem.didPlayToEndTimeNotification, item: item, token: token) { source, _ in
+            source.sampleAccessLog()
             source.process { try $0.end(reason: .playbackEnded, at: .now) }
+        }
+        observe(AVPlayerItem.newAccessLogEntryNotification, item: item, token: token) { source, _ in
+            source.sampleAccessLog()
         }
         let jumpToken = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.timeJumpedNotification, object: item, queue: nil
@@ -254,6 +269,7 @@ public final class FramewrightAVPlayer: PlayerEventSource {
             )
             return
         }
+        sampleAccessLog()
         let control: PlaybackControl
         switch player.timeControlStatus {
         case .paused: control = .paused
@@ -270,6 +286,14 @@ public final class FramewrightAVPlayer: PlayerEventSource {
                 control: control, ready: item.status == .readyToPlay,
                 buffering: buffering, bufferedMs: buffered, at: .now)
         }
+    }
+
+    private func sampleAccessLog() {
+        guard state.sessionID != nil, let item = observedItem, let log = item.accessLog() else { return }
+        let now = DiagnosticTime.now
+        guard let sample = droppedFrames.sample(log.events.map(\.numberOfDroppedVideoFrames), at: now.monotonicMs)
+        else { return }
+        process { try $0.droppedFrames(count: sample.count, elapsedMs: sample.elapsedMs, at: now) }
     }
 
     private func fail(code: String, message: String?) {

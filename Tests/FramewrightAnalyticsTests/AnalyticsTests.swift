@@ -255,3 +255,10 @@ private struct FailingSink: DiagnosticEventSink {
     #expect(!json.contains("deviceName"))
     #expect(try codec.decodeEvent(json) == legacy)
 }
+
+@Test func firstFrameReadinessIsDistinctFromRenderedFrames() throws {
+    let value = try event(.renderFirstFrame(.init(elapsedSincePrepareMs: 10, source: .readyForDisplay)))
+    let codec = DiagnosticEventJSONCodec()
+    #expect(try codec.decodeEvent(codec.encodeEvent(value)) == value)
+    #expect(try codec.encodeEvent(value).contains("READY_FOR_DISPLAY"))
+}

@@ -58,11 +58,13 @@ public struct FramewrightDiagnosticsOverlay: View {
                         }
                     }
                     Section {
-                        row("First frame", state.summary.timeToFirstFrameMs.map { "\($0) ms" } ?? "Unavailable")
+                        row(
+                            state.firstFrameSource == .readyForDisplay ? "First frame ready" : "First frame",
+                            state.summary.timeToFirstFrameMs.map { "\($0) ms" } ?? "Unavailable")
                         row(
                             "Rebuffers",
                             state.summary.timeToFirstFrameMs == nil ? "Unavailable" : "\(state.summary.rebufferCount)")
-                        row("Dropped frames", state.droppedFrames.map(String.init) ?? "Unavailable")
+                        row("Dropped frames", state.droppedFrames.map(String.init) ?? "Not reported by player")
                     } header: {
                         Text("Metrics")
                     } footer: {
