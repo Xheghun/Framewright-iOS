@@ -12,6 +12,7 @@ public final class DiagnosticsModel: ObservableObject {
 
     /// Runs until its task is cancelled. Refreshes retained history without consuming live events.
     public func observe(pipeline: DiagnosticEventPipeline, sessionID: String) async {
+        guard !Task.isCancelled else { return }
         let id = UUID()
         observationID = id
         state = nil
@@ -22,14 +23,13 @@ public final class DiagnosticsModel: ObservableObject {
                 let snapshot = try await pipeline.snapshot(sessionId: sessionID)
                 guard !Task.isCancelled, observationID == id else { return }
                 if state?.snapshot != snapshot { state = try DiagnosticsState(snapshot: snapshot) }
-                errorMessage = nil
-                try await Task.sleep(for: .milliseconds(250))
-            } catch is CancellationError { return } catch {
-                guard observationID == id else { return }
-                state = nil
-                errorMessage = "Unable to read session diagnostics."
-                return
+                if errorMessage != nil { errorMessage = nil }
+            } catch {
+                guard !Task.isCancelled, observationID == id else { return }
+                if state != nil { state = nil }
+                if errorMessage == nil { errorMessage = "Unable to read session diagnostics." }
             }
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
         }
     }
 }

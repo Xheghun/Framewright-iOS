@@ -73,3 +73,53 @@ private enum WaitError: Error { case timeout }
     #expect(model.state == frozen)
     await pipeline.unsubscribe(otherSubscriber.id)
 }
+
+@Test @MainActor func cancelledObservationCannotReplaceCurrentSession() async throws {
+    let pipeline = try DiagnosticEventPipeline()
+    let model = DiagnosticsModel()
+    let active = Task { await model.observe(pipeline: pipeline, sessionID: "first") }
+    defer { active.cancel() }
+    try await waitFor { model.state?.snapshot.sessionId == "first" }
+    let cancelled = Task { await model.observe(pipeline: pipeline, sessionID: "stale") }
+    cancelled.cancel()
+    await cancelled.value
+    #expect(model.state?.snapshot.sessionId == "first")
+    _ = await pipeline.publish(try event(.playbackStateChanged(.init(status: .playing))))
+    try await waitFor { model.state?.status == "Playing" }
+    active.cancel()
+    await active.value
+}
+
+@Test @MainActor func unchangedHistoryDoesNotPublishRepeatedUpdates() async throws {
+    let pipeline = try DiagnosticEventPipeline()
+    let model = DiagnosticsModel()
+    let observation = Task { await model.observe(pipeline: pipeline, sessionID: "first") }
+    defer { observation.cancel() }
+    try await waitFor { model.state != nil }
+    var updates = 0
+    let subscription = model.objectWillChange.sink { updates += 1 }
+    defer { subscription.cancel() }
+    try await Task.sleep(for: .milliseconds(600))
+    #expect(updates == 0)
+    observation.cancel()
+    await observation.value
+}
+
+@Test @MainActor func invalidMetricsRecoverAfterHistoryIsCleared() async throws {
+    let pipeline = try DiagnosticEventPipeline()
+    _ = await pipeline.publish(try event(.renderFirstFrame(.init(elapsedSincePrepareMs: 1))))
+    for _ in 0..<2 {
+        _ = await pipeline.publish(try event(.rebufferEnd(.init(durationMs: Int64.max))))
+    }
+    let model = DiagnosticsModel()
+    let observation = Task { await model.observe(pipeline: pipeline, sessionID: "first") }
+    defer { observation.cancel() }
+    try await waitFor { model.errorMessage != nil }
+    #expect(model.state == nil)
+    await pipeline.clear(sessionId: "first")
+    _ = await pipeline.publish(try event(.playbackStateChanged(.init(status: .playing))))
+    try await waitFor { model.state?.status == "Playing" }
+    #expect(model.errorMessage == nil)
+    observation.cancel()
+    await observation.value
+}

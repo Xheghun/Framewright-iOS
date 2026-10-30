@@ -7,6 +7,7 @@ public struct FramewrightDiagnosticsOverlay: View {
     private let pipeline: DiagnosticEventPipeline
     private let sessionID: String
     private let incomplete: Bool
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = DiagnosticsModel()
     @State private var expanded = false
     @State private var exporting = false
@@ -26,11 +27,16 @@ public struct FramewrightDiagnosticsOverlay: View {
             Label("Diagnostics · \(model.state?.status ?? "Waiting")", systemImage: "waveform.path.ecg")
                 .font(.subheadline.weight(.medium))
                 .padding(12)
+                .frame(minHeight: 44)
                 .background(.regularMaterial, in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens session metrics and event history")
-        .task(id: ObservationKey(pipeline: ObjectIdentifier(pipeline), sessionID: sessionID)) {
+        .task(
+            id: ObservationKey(
+                pipeline: ObjectIdentifier(pipeline), sessionID: sessionID, active: scenePhase == .active)
+        ) {
+            guard scenePhase == .active else { return }
             await model.observe(pipeline: pipeline, sessionID: sessionID)
         }
         .sheet(isPresented: $expanded) { details }
@@ -66,19 +72,8 @@ public struct FramewrightDiagnosticsOverlay: View {
                     }
                     Section("Events (\(state.snapshot.events.count))") {
                         ForEach(Array(state.snapshot.events.enumerated()), id: \.offset) { _, event in
-                            DisclosureGroup {
-                                Text(eventJSON(event)).font(.system(.caption, design: .monospaced))
-                                    .textSelection(.enabled)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(event.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
-                                    Text(
-                                        Date(timeIntervalSince1970: Double(event.metadata.timestampMs) / 1000),
-                                        style: .time
-                                    )
-                                    .font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
+                            DiagnosticEventRow(event: event)
+                                .id(event.eventId)
                         }
                     }
                 } else {
@@ -111,10 +106,6 @@ public struct FramewrightDiagnosticsOverlay: View {
         LabeledContent(title) { Text(value).textSelection(.enabled) }
     }
 
-    private func eventJSON(_ event: DiagnosticEvent) -> String {
-        (try? DiagnosticEventJSONCodec().encodeEvent(event)) ?? "Unable to encode event."
-    }
-
     private func export() {
         guard let state = model.state else { return }
         do {
@@ -128,6 +119,7 @@ public struct FramewrightDiagnosticsOverlay: View {
 private struct ObservationKey: Equatable {
     let pipeline: ObjectIdentifier
     let sessionID: String
+    let active: Bool
 }
 
 private struct DiagnosticsDocument: FileDocument {
@@ -140,5 +132,26 @@ private struct DiagnosticsDocument: FileDocument {
     }
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: Data(json.utf8))
+    }
+}
+
+private struct DiagnosticEventRow: View {
+    let event: DiagnosticEvent
+    @State private var expanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            if expanded {
+                Text((try? DiagnosticEventJSONCodec().encodeEvent(event)) ?? "Unable to encode event.")
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                Text(Date(timeIntervalSince1970: Double(event.metadata.timestampMs) / 1000), style: .time)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
