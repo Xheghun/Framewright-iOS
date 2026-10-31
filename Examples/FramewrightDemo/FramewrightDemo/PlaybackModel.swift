@@ -8,9 +8,9 @@ import FramewrightAnalytics
 final class PlaybackModel: ObservableObject {
     let player = AVPlayer()
     @Published private(set) var connected = false
-    @Published private(set) var events: [DiagnosticEvent] = []
     @Published private(set) var sessions: [String] = []
     @Published var selectedSession = ""
+    @Published private(set) var renderingSession = ""
     @Published var message: String?
     @Published private(set) var playbackStatus = "Paused"
     @Published private(set) var position = 0.0
@@ -19,7 +19,7 @@ final class PlaybackModel: ObservableObject {
     @Published private(set) var diagnosticsIncomplete = false
     private var lifecycleBusy = false
     private var seekID: UUID?
-    private var pipeline: DiagnosticEventPipeline?
+    @Published private(set) var pipeline: DiagnosticEventPipeline?
     private var diagnostics: FramewrightAVPlayer?
     private var subscription: DiagnosticSubscription?
     private var eventTask: Task<Void, Never>?
@@ -81,7 +81,10 @@ final class PlaybackModel: ObservableObject {
         do {
             try diagnostics.recordPreparationStarted(for: item)
             player.replaceCurrentItem(with: item)
-            if let id = diagnostics.activeSessionID { selectedSession = id }
+            if let id = diagnostics.activeSessionID {
+                selectedSession = id
+                renderingSession = id
+            }
             message = nil
             if autoplay { player.play() }
             refresh()
@@ -128,6 +131,7 @@ final class PlaybackModel: ObservableObject {
             player.pause()
             try diagnostics.startSession()
             selectedSession = diagnostics.activeSessionID ?? ""
+            renderingSession = selectedSession
             if let item = player.currentItem { try diagnostics.recordPreparationStarted(for: item) }
             seek(to: 0, playAfter: true)
         } catch { message = String(describing: error) }
@@ -157,6 +161,11 @@ final class PlaybackModel: ObservableObject {
                 }
             }
         } catch { message = String(describing: error) }
+    }
+
+    func firstFrameReady(for item: AVPlayerItem, session: String) {
+        guard diagnostics?.activeSessionID == session else { return }
+        diagnostics?.recordFirstFrame(for: item, source: .readyForDisplay)
     }
 
     func refresh() {
@@ -189,11 +198,8 @@ final class PlaybackModel: ObservableObject {
             sessions.append(event.sessionId)
             if selectedSession.isEmpty { selectedSession = event.sessionId }
         }
-        events.append(event)
-        if events.count > 200 { events.removeFirst(events.count - 200) }
         while sessions.count > 10 {
             let removed = sessions.removeFirst()
-            events.removeAll { $0.sessionId == removed }
             if selectedSession == removed { selectedSession = sessions.last ?? "" }
             await pipeline.clear(sessionId: removed)
         }

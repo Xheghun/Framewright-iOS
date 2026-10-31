@@ -1,6 +1,8 @@
 import AVFoundation
 import FramewrightAnalytics
+import SwiftUI
 import Testing
+import UIKit
 
 @testable import FramewrightDemo
 
@@ -89,6 +91,7 @@ import Testing
         return
     }
     #expect(start.deviceModel != "unknown")
+    #expect(start.deviceName != nil)
     #expect(start.appVersion != "unknown")
     model.replay()
     #expect(model.selectedSession != initial)
@@ -98,5 +101,41 @@ import Testing
     let export = try await model.exportSession(initial)
     #expect(export.contains("REPLACED"))
     #expect(try !DiagnosticEventJSONCodec().decodeSession(export).events.contains { $0.type == .renderFirstFrame })
+    await model.disconnect()
+}
+
+@Test(.timeLimit(.minutes(1))) @MainActor func nativePlayerReportsFirstVideoFrameReadiness() async throws {
+    let url = try #require(Bundle.main.url(forResource: "TestPattern", withExtension: "mp4"))
+    let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+    let window = UIWindow(windowScene: scene)
+    let model = PlaybackModel()
+    await model.connect()
+    model.load(url)
+    let session = model.renderingSession
+    let host = UIHostingController(rootView: InstrumentedVideoPlayer(model: model, session: session))
+    window.rootViewController = host
+    window.makeKeyAndVisible()
+    defer {
+        window.isHidden = true
+        window.rootViewController = nil
+    }
+    model.play()
+    let deadline = ContinuousClock.now.advanced(by: .seconds(20))
+    var frames: [RenderFirstFramePayload] = []
+    while frames.isEmpty, ContinuousClock.now < deadline {
+        let snapshot = try DiagnosticEventJSONCodec().decodeSession(await model.exportSession(session))
+        frames = snapshot.events.compactMap {
+            if case .renderFirstFrame(let frame) = $0.payload { return frame }
+            return nil
+        }
+        if frames.isEmpty { try await Task.sleep(for: .milliseconds(50)) }
+    }
+    #expect(frames.count == 1)
+    #expect(frames.first?.source == .readyForDisplay)
+    let oldItem = try #require(model.player.currentItem)
+    model.load(url)
+    model.firstFrameReady(for: oldItem, session: session)
+    let next = try DiagnosticEventJSONCodec().decodeSession(await model.exportSession(model.renderingSession))
+    #expect(!next.events.contains { $0.type == .renderFirstFrame })
     await model.disconnect()
 }

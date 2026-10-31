@@ -27,6 +27,8 @@ struct PlaybackSessionState: Sendable {
         let startedMs: Int64
         var preparedMs: Int64?
         var firstFrame = false
+        var firstFrameSource: FirstFrameSource = .rendered
+        var hasPlayed = false
         var rebufferMs: Int64?
         var seeking = false
         var control: PlaybackControl = .paused
@@ -51,14 +53,16 @@ struct PlaybackSessionState: Sendable {
         session?.preparedMs = time.monotonicMs
     }
 
-    mutating func firstFrame(at time: DiagnosticTime) throws -> [DiagnosticEvent] {
+    mutating func firstFrame(at time: DiagnosticTime, source: FirstFrameSource = .rendered) throws -> [DiagnosticEvent]
+    {
         guard let current = session, !current.firstFrame, let prepared = current.preparedMs else { return [] }
         session?.firstFrame = true
+        session?.firstFrameSource = source
         return [
             try event(
                 .renderFirstFrame(
                     RenderFirstFramePayload(
-                        elapsedSincePrepareMs: max(0, time.monotonicMs - prepared))), at: time)
+                        elapsedSincePrepareMs: max(0, time.monotonicMs - prepared), source: source)), at: time)
         ]
     }
 
@@ -78,6 +82,7 @@ struct PlaybackSessionState: Sendable {
             status = .waiting
             playerState = .buffering
         case .playing:
+            session?.hasPlayed = true
             status = .playing
             playerState = .ready
         }
@@ -90,7 +95,9 @@ struct PlaybackSessionState: Sendable {
         case .playing:
             return try finishRebuffer(at: time) + transition
         case .waiting:
-            guard buffering, session?.firstFrame == true, session?.seeking == false,
+            guard buffering, session?.firstFrame == true,
+                session?.firstFrameSource != .readyForDisplay || session?.hasPlayed == true,
+                session?.seeking == false,
                 session?.rebufferMs == nil
             else { return transition }
             session?.rebufferMs = time.monotonicMs
@@ -103,6 +110,11 @@ struct PlaybackSessionState: Sendable {
         guard session != nil else { return [] }
         session?.rebufferMs = nil
         return [try event(.positionDiscontinuity(PositionDiscontinuityPayload(positionMs: positionMs)), at: time)]
+    }
+
+    mutating func droppedFrames(count: Int, elapsedMs: Int64, at time: DiagnosticTime) throws -> [DiagnosticEvent] {
+        guard session != nil else { return [] }
+        return [try event(.droppedFrames(.init(count: count, elapsedMs: elapsedMs)), at: time)]
     }
 
     mutating func beginSeek() {

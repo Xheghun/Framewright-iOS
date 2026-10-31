@@ -76,7 +76,7 @@ Unavailable timing ratios are `nil`, not zero. A summary carries the snapshot's 
 
 ## JSON and validation
 
-`DiagnosticEventJSONCodec` encodes schema version 3 and decodes versions 2 and 3. Event envelopes use `{schemaVersion, event}`; session envelopes use `{schemaVersion, sessionId, truncated, events}`. Events have flat metadata plus `type` and `payload`. Existing fields retain the Android schema conventions. Version 3 adds `PLAYBACK_STATE_CHANGED` (`status`: `PAUSED`, `WAITING`, or `PLAYING`) and `POSITION_DISCONTINUITY` (`positionMs`). Version 2 readers need upgrading before consuming version 3 exports.
+`DiagnosticEventJSONCodec` encodes schema version 3 and decodes versions 2 and 3. Event envelopes use `{schemaVersion, event}`; session envelopes use `{schemaVersion, sessionId, truncated, events}`. Events have flat metadata plus `type` and `payload`. Existing fields retain the Android schema conventions. Version 3 adds `PLAYBACK_STATE_CHANGED` (`status`: `PAUSED`, `WAITING`, or `PLAYING`) and `POSITION_DISCONTINUITY` (`positionMs`). Session-start payloads optionally include `deviceName`; older payloads without it remain readable. Version 2 readers need upgrading before consuming version 3 exports.
 
 All 15 Android event types are represented, including codec and DRM data. Their presence in the model does not imply those measurements are available from iOS. Adapters must not invent measurements; omit optional values, omit unavailable capability snapshots, or refrain from producing an event when required measurements are unavailable.
 
@@ -97,3 +97,5 @@ Exports include supplied URIs, messages, and diagnostic identifiers. Analytics d
 The package targets iOS 16 or later with Swift tools 6.0. macOS 13 is declared for host-side compilation and testing of the player-independent analytics module; this does not establish macOS support for future UI or player adapters.
 
 Run `swift test` for host tests, or use Xcode's `Framewright-Package` scheme to run the same tests on an iOS simulator. CI runs simulator tests and strict Swift style checks alongside Debug/Release simulator/device builds.
+
+First-frame payloads optionally identify `source: READY_FOR_DISPLAY` when the host reports video presentation readiness. Omitted `source` retains the original `RENDERED` meaning. Consumers must distinguish readiness timing from confirmed rendering time.
