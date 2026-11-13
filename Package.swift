@@ -35,5 +35,6 @@ let package = Package(
         .target(name: "FramewrightDiagnosticsOverlay", dependencies: ["FramewrightAnalytics"]),
         .testTarget(name: "FramewrightDiagnosticsOverlayTests", dependencies: ["FramewrightDiagnosticsOverlay"]),
         .target(name: "FramewrightStorage", dependencies: ["FramewrightAnalytics"]),
+        .testTarget(name: "FramewrightStorageTests", dependencies: ["FramewrightStorage"]),
     ]
 )
