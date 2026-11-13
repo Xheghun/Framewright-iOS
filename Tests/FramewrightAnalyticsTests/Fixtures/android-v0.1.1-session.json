@@ -1,0 +1,45 @@
+{
+    "schemaVersion": 2,
+    "sessionId": "android",
+    "truncated": false,
+    "events": [
+        {
+            "sessionId": "android",
+            "eventId": "start",
+            "timestampMs": 100,
+            "elapsedRealtimeMs": 50,
+            "type": "SESSION_START",
+            "playerState": null,
+            "payload": {
+                "mediaUri": "<redacted>",
+                "drmScheme": null,
+                "deviceModel": "unknown",
+                "osVersion": "unknown",
+                "appVersion": "unknown"
+            }
+        },
+        {
+            "sessionId": "android",
+            "eventId": "frame",
+            "timestampMs": 200,
+            "elapsedRealtimeMs": 150,
+            "type": "RENDER_FIRST_FRAME",
+            "playerState": null,
+            "payload": {
+                "elapsedSincePrepareMs": 100
+            }
+        },
+        {
+            "sessionId": "android",
+            "eventId": "end",
+            "timestampMs": 300,
+            "elapsedRealtimeMs": 250,
+            "type": "SESSION_END",
+            "playerState": null,
+            "payload": {
+                "durationMs": 200,
+                "reason": "PLAYBACK_ENDED"
+            }
+        }
+    ]
+}
