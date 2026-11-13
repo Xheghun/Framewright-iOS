@@ -342,3 +342,29 @@ private struct NotificationItem: @unchecked Sendable {
     let jumps = try await pipeline.snapshot(sessionId: id).events.filter { $0.type == .positionDiscontinuity }
     #expect(jumps.count == 1)
 }
+
+@Test @MainActor func cancelledSeekTokenCannotAffectReplacementItem() async throws {
+    let url = try audioFixture()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let old = AVPlayerItem(url: url)
+    let replacement = AVPlayerItem(url: url)
+    let player = AVPlayer(playerItem: old)
+    let pipeline = try DiagnosticEventPipeline()
+    let source = try FramewrightAVPlayer.attach(player: player, pipeline: pipeline, sessionId: "old")
+    let abandoned = try source.beginSeek(for: old)
+    old.cancelPendingSeeks()
+    player.replaceCurrentItem(with: replacement)
+    let replacementID = try #require(source.activeSessionID)
+    let current = try source.beginSeek(for: replacement)
+    source.endSeek(abandoned)
+    #expect(source.activeSessionID == replacementID)
+    #expect(throws: AVPlayerDiagnosticsError.noCurrentItem) { try source.beginSeek(for: old) }
+    source.endSeek(current)
+    source.detach()
+    source.detach()
+    await source.flush()
+    #expect(player.currentItem === replacement)
+    let snapshot = try await pipeline.snapshot(sessionId: replacementID)
+    #expect(snapshot.events.filter { $0.type == .sessionEnd }.count == 1)
+    #expect(!snapshot.events.contains { $0.type == .rebufferStart })
+}
