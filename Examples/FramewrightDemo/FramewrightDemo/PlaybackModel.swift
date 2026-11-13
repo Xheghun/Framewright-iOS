@@ -3,6 +3,8 @@ import Combine
 import Foundation
 import FramewrightAVPlayerAdapter
 import FramewrightAnalytics
+import FramewrightBandwidthMonitor
+import FramewrightStorage
 
 @MainActor
 final class PlaybackModel: ObservableObject {
@@ -20,14 +22,60 @@ final class PlaybackModel: ObservableObject {
     @Published private var failedConnections: Set<UUID> = []
     private var sessionConnections: [String: UUID] = [:]
     private var connectionID = UUID()
+    struct BandwidthPoint: Identifiable {
+        let id = UUID()
+        let elapsed: Double
+        let sample: PlaybackBandwidthSample
+    }
+
+    @Published private(set) var bandwidthHistory: [BandwidthPoint] = []
+    var bandwidthSample: PlaybackBandwidthSample? { bandwidthHistory.last?.sample }
+    private var bandwidthStartedAt = ProcessInfo.processInfo.systemUptime
+    private var bandwidthMonitor: AVPlayerBandwidthMonitor?
+    @Published private(set) var latestVariantSwitch: ObservedVariantSwitch?
+    private var stopVariantMonitor: (@MainActor () -> Void)?
     private var lifecycleBusy = false
     private var seekID: UUID?
     @Published private(set) var pipeline: DiagnosticEventPipeline?
+    private let persistenceDirectory: URL?
+    private var sessionStore: FramewrightSessionStore?
+    private var storageSink: PersistentDiagnosticSink?
+    @Published private(set) var storedSession: SessionSnapshot?
     private var diagnostics: FramewrightAVPlayer?
     private var subscription: DiagnosticSubscription?
     private var eventTask: Task<Void, Never>?
 
-    init(pipeline: DiagnosticEventPipeline? = nil) { self.pipeline = pipeline }
+    init(pipeline: DiagnosticEventPipeline? = nil, persistenceDirectory: URL? = nil) {
+        self.pipeline = pipeline
+        self.persistenceDirectory = persistenceDirectory
+    }
+
+    func openLatestStoredSession() async {
+        guard let sessionStore else { return }
+        do {
+            await diagnostics?.flush()
+            try await storageSink?.flush()
+            let sessions = try await sessionStore.listSessions()
+            var latest: SessionSnapshot?
+            var latestTimestamp = Int64.min
+            for id in sessions {
+                let candidate = try await sessionStore.load(id)
+                if let timestamp = candidate.events.last?.metadata.timestampMs, timestamp >= latestTimestamp {
+                    latestTimestamp = timestamp
+                    latest = candidate
+                }
+            }
+            if let latest {
+                storedSession = try latest.mergingDeliveryIncomplete(isIncomplete(latest.sessionId))
+            } else {
+                message = "No stored diagnostic sessions."
+            }
+        } catch {
+            message = "Unable to read stored diagnostic sessions."
+        }
+    }
+
+    func dismissStoredSession() { storedSession = nil }
 
     private func isIncomplete(_ session: String) -> Bool {
         sessionConnections[session].map { failedConnections.contains($0) } ?? false
@@ -39,8 +87,18 @@ final class PlaybackModel: ObservableObject {
         lifecycleBusy = true
         defer { lifecycleBusy = false }
         do {
+            if pipeline == nil, let persistenceDirectory {
+                do {
+                    let store = try FramewrightSessionStore(
+                        directory: persistenceDirectory, maximumSessions: 100, maximumBytes: 16_777_216)
+                    storageSink = try PersistentDiagnosticSink(store: store)
+                    sessionStore = store
+                } catch { message = "Session storage unavailable." }
+            }
+            let sinks: [any DiagnosticEventSink] = storageSink.map { [$0] } ?? []
             let pipeline =
-                try self.pipeline ?? DiagnosticEventPipeline(maxEventsPerSession: 500, liveBufferCapacity: 256)
+                try self.pipeline
+                ?? DiagnosticEventPipeline(maxEventsPerSession: 500, liveBufferCapacity: 256, sinks: sinks)
             self.pipeline = pipeline
             let subscription = await pipeline.subscribe()
             self.subscription = subscription
@@ -58,6 +116,7 @@ final class PlaybackModel: ObservableObject {
                     await self?.receive(event, pipeline: pipeline)
                 }
             }
+            bandwidthMonitor = AVPlayerBandwidthMonitor(configuration: try BandwidthEstimatorConfiguration())
             connected = true
         } catch { message = String(describing: error) }
     }
@@ -71,8 +130,22 @@ final class PlaybackModel: ObservableObject {
         isSeeking = false
         player.pause()
         player.currentItem?.cancelPendingSeeks()
+        bandwidthMonitor?.detach()
+        bandwidthMonitor = nil
+        resetBandwidthHistory()
+        stopVariants()
         diagnostics?.detach()
         await diagnostics?.flush()
+        if let sessionStore, let storageSink {
+            do {
+                try await storageSink.flush()
+                for (id, connection) in sessionConnections where connection == connectionID && isIncomplete(id) {
+                    do { try await sessionStore.markDeliveryIncomplete(id) } catch SessionStorageError.notFound {
+                        continue
+                    }
+                }
+            } catch { message = "Some diagnostic events could not be stored." }
+        }
         if let pipeline, let subscription { await pipeline.unsubscribe(subscription.id) }
         await eventTask?.value
         eventTask = nil
@@ -92,6 +165,9 @@ final class PlaybackModel: ObservableObject {
         do {
             try diagnostics.recordPreparationStarted(for: item)
             player.replaceCurrentItem(with: item)
+            bandwidthMonitor?.attach(to: item)
+            resetBandwidthHistory()
+            observeVariants(for: item)
             if let id = diagnostics.activeSessionID {
                 sessionConnections[id] = connectionID
                 selectedSession = id
@@ -145,7 +221,12 @@ final class PlaybackModel: ObservableObject {
             selectedSession = diagnostics.activeSessionID ?? ""
             sessionConnections[selectedSession] = connectionID
             renderingSession = selectedSession
-            if let item = player.currentItem { try diagnostics.recordPreparationStarted(for: item) }
+            if let item = player.currentItem {
+                try diagnostics.recordPreparationStarted(for: item)
+                bandwidthMonitor?.attach(to: item)
+                observeVariants(for: item)
+            }
+            resetBandwidthHistory()
             seek(to: 0, playAfter: true)
         } catch { message = String(describing: error) }
     }
@@ -181,7 +262,37 @@ final class PlaybackModel: ObservableObject {
         diagnostics?.recordFirstFrame(for: item, source: .readyForDisplay)
     }
 
+    private func stopVariants() {
+        stopVariantMonitor?()
+        stopVariantMonitor = nil
+        latestVariantSwitch = nil
+    }
+
+    private func observeVariants(for item: AVPlayerItem) {
+        stopVariants()
+        guard #available(iOS 18, *),
+            let url = (item.asset as? AVURLAsset)?.url,
+            let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https"
+        else { return }
+        let monitor = AVPlayerVariantMonitor()
+        monitor.observe(item) { [weak self, weak item] observation in
+            guard let self, let item, self.player.currentItem === item else { return }
+            self.latestVariantSwitch = observation
+        }
+        stopVariantMonitor = { monitor.detach() }
+    }
+
+    private func resetBandwidthHistory() {
+        bandwidthHistory = []
+        bandwidthStartedAt = ProcessInfo.processInfo.systemUptime
+    }
+
     func refresh() {
+        if let item = player.currentItem, let samples = bandwidthMonitor?.sample(for: item), !samples.isEmpty {
+            let elapsed = ProcessInfo.processInfo.systemUptime - bandwidthStartedAt
+            let points = samples.map { BandwidthPoint(elapsed: elapsed, sample: $0) }
+            bandwidthHistory = Array((bandwidthHistory + points).suffix(120))
+        }
         let current = player.currentTime().seconds
         position = current.isFinite ? max(0, current) : 0
         let length = player.currentItem?.duration.seconds ?? 0

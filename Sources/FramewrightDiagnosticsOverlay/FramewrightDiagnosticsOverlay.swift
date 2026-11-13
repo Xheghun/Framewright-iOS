@@ -74,6 +74,38 @@ public struct FramewrightDiagnosticsOverlay: View {
                             "Metrics reflect retained events. Unavailable measurements require additional instrumentation."
                         )
                     }
+                    Section("Format and transfer") {
+                        row("Video codec", state.selectedFormat?.codecs ?? "Unavailable")
+                        row("Video bitrate", state.selectedFormat.map { "\($0.bitrate) b/s" } ?? "Unavailable")
+                        row("Video decoder", state.decoder?.decoderName ?? "Unavailable")
+                        row("Buffered at last stall", state.bufferedMsAtStall.map { "\($0) ms" } ?? "Unavailable")
+                        row("Last issue", state.lastIssue ?? "Unavailable")
+                    }
+                    Section("Bandwidth") {
+                        row("Instantaneous", state.bandwidth.map { "\($0.instantaneousBps) b/s" } ?? "Unavailable")
+                        row("Fast estimate", state.bandwidth.map { "\($0.fastEstimateBps) b/s" } ?? "Unavailable")
+                        row("Slow estimate", state.bandwidth.map { "\($0.slowEstimateBps) b/s" } ?? "Unavailable")
+                        row("Default estimate", state.bandwidth.map { "\($0.defaultEstimateBps) b/s" } ?? "Unavailable")
+                        row(
+                            "Confidence",
+                            state.bandwidth.map {
+                                $0.confidence.formatted(.percent.precision(.fractionLength(0)))
+                            } ?? "Unavailable")
+                    }
+                    Section("Content protection") {
+                        row("DRM scheme", state.drmScheme?.rawValue ?? "Unavailable")
+                        row("DRM state", state.drmSession?.state?.rawValue ?? "Unavailable")
+                        row("Last request", state.drmRequest?.requestKind.rawValue ?? "Unavailable")
+                        row("Key status", state.drmKey?.status.rawValue ?? "Unavailable")
+                        row("Security level", state.drmKey?.securityLevel ?? "Unavailable")
+                        row("Current HDCP", state.drmKey?.hdcpLevel ?? "Unavailable")
+                        row("Maximum HDCP", state.drmKey?.maxHdcpLevel ?? "Unavailable")
+                        row(
+                            "Expiration",
+                            state.drmExpiryMs.map {
+                                Date(timeIntervalSince1970: Double($0) / 1_000).formatted()
+                            } ?? "Unavailable")
+                    }
                     Section("Events (\(state.snapshot.events.count))") {
                         ForEach(Array(state.snapshot.events.enumerated()), id: \.offset) { _, event in
                             DiagnosticEventRow(event: event)

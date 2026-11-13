@@ -184,3 +184,25 @@ private final class FailingDiagnosticSink: DiagnosticEventSink, @unchecked Senda
     #expect(try codec.decodeSession(await model.exportSession(first)).deliveryIncomplete == true)
     await model.disconnect()
 }
+
+@Test @MainActor func storedSessionCanBeOpenedByAFreshDemoModel() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = try #require(Bundle.main.url(forResource: "ColorBars", withExtension: "mp4"))
+    let first = PlaybackModel(persistenceDirectory: directory)
+    await first.connect()
+    first.load(url)
+    let id = first.selectedSession
+    await first.disconnect()
+    await first.openLatestStoredSession()
+    #expect(first.storedSession?.sessionId == id)
+    let next = PlaybackModel(persistenceDirectory: directory)
+    await next.connect()
+    await next.openLatestStoredSession()
+    #expect(next.storedSession?.sessionId == id)
+    #expect(next.storedSession?.events.first?.type == .sessionStart)
+    #expect(next.storedSession?.events.last?.type == .sessionEnd)
+    next.dismissStoredSession()
+    #expect(next.storedSession == nil)
+    await next.disconnect()
+}

@@ -21,3 +21,7 @@ Metrics describe retained events. Truncated history is labeled. First-frame and 
 The sheet supports Dynamic Type, text selection, and labeled accessibility controls. Test device-specific measurements and VoiceOver in the integrating application.
 
 Exports merge the host's selected-session `incomplete` warning into the captured snapshot's optional `deliveryIncomplete` metadata. A false host warning leaves unspecified or existing metadata unchanged; it never clears known loss. Truncation remains independent. Export is disabled while displayed state belongs to a previous selection, and `DiagnosticsState.exportJSON(sessionID:incomplete:)` rejects a mismatched session. Supply a warning scoped to the selected session, not a global selection-independent flag.
+
+The metrics panel includes the fast, slow, and default bandwidth estimates when a retained
+`BANDWIDTH_SAMPLE` event supplies them. The corresponding rows show **Unavailable** until
+such a sample exists for the selected session.

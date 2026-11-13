@@ -6,9 +6,24 @@ The app owns its AVPlayer and attaches Framewright diagnostics. It opens with th
 
 Use **Choose video** to select **Big Buck Bunny**, **Sintel**, an offline test video, or an HTTPS stream. The film trailers require an internet connection. Tap the video for native playback controls. The top-right **Playback actions** menu provides tracked five-second seeks and **Replay as new session**. Tap **Diagnostics** for metrics, event history, and JSON export. The session menu selects earlier runs. The overlay shows up to 500 retained events per session; the sample retains 10 sessions. Truncated histories are labeled. Export during playback produces a snapshot; finish playback or replace the item before exporting a completed run.
 
+## Bandwidth and stored sessions
+
+Expand **ABR Explorer** to view observed throughput, advertised bitrate, and the custom estimator's
+short history. For HLS on iOS 18 and later, the explorer can also show the most recent successful
+variant switch reported by AVMetrics. The native ABR estimate and decision reason remain unavailable.
+
+Use **Open latest stored session** in the playback actions menu to flush queued events and read the
+latest committed session. **Share stored JSON** opens the system share sheet with the JSON as text.
+Use the overlay's export action to save a JSON file for the selected retained session.
+
 ## Measurement limits
 
 The SwiftUI sample embeds AVPlayerViewController and reports its first-video-frame-ready signal. The metric is labeled **First frame ready** and exported with `source: READY_FOR_DISPLAY`; it measures readiness for presentation, not the exact screen presentation time. Rebuffer tracking begins after readiness and playback have both occurred. Dropped frames come from AVPlayer access logs when available. Local files and some progressive streams provide no counter and remain unavailable. Select **Apple HLS test stream** to inspect streaming counters; zero is shown only when AVPlayer reports a known count. Pause/resume transitions and timeline jumps from native controls appear in Diagnostics. Timeline jumps are recorded as `POSITION_DISCONTINUITY` because AVPlayer does not identify their cause. The menu’s seek hooks additionally exclude seek-related buffering.
+
+Delivery errors mark sessions on the affected diagnostic connection as incomplete. The warning
+follows the selected session. Reconnect starts a new connection and preserves warnings for earlier
+sessions. Exports carry `deliveryIncomplete` independently of `truncated`. When
+`deliveryIncomplete` is absent, delivery completeness is unspecified.
 
 Default URI sanitization removes credentials, queries, fragments, and local paths. HTTP URL paths remain visible in exports. Diagnostic delivery errors show an incomplete-data warning; restart the app before another validation run.
 
@@ -38,5 +53,3 @@ ffmpeg -f lavfi -i 'smptebars=size=640x360:rate=24:duration=12' -an -c:v libx264
 - **Sintel**: © 2010 Blender Foundation. [Attribution and license](https://durian.blender.org/about/). [Trailer](https://media.w3.org/2010/05/sintel/trailer.mp4).
 
 Both films are licensed under [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/). The sample streams unmodified trailers hosted by W3C; the films are not bundled with the app. Credits and license links are also available in the video picker.
-
-Delivery errors conservatively mark all sessions created on the affected diagnostic connection, including later sessions until reconnect. Selecting another session does not remove its warning. Both the overlay and `PlaybackModel.exportSession` encode the selected session's `deliveryIncomplete: true` separately from `truncated`; absent metadata means unspecified, not confirmed complete. Reconnect starts fresh warning scope while preserving warnings for earlier sessions. Older v3 readers may ignore the new field and cannot assess delivery loss.
