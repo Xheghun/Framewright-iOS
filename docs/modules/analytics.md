@@ -105,3 +105,11 @@ First-frame payloads optionally identify `source: READY_FOR_DISPLAY` when the ho
 `SessionSnapshot.deliveryIncomplete` is an optional Boolean in the v3 session envelope. `true` reports known diagnostic delivery loss/failure; `false` is an explicit producer assertion, and absence (or null on input) means unspecified, including legacy v2/v3 exports. Default construction omits it. Encoding remains v3 and supported v2 inputs remain readable. This field is independent of `truncated`, which reports eviction of retained history. Either, both, or neither limitation may apply. Summary values still describe only the retained events.
 
 Use `snapshot.mergingDeliveryIncomplete(hostWarning)` before encoding a captured snapshot. A false warning preserves existing metadata, including unspecified; it does not assert successful collection. Older v3 readers may ignore the additive field and cannot assess delivery completeness. A missing warning in an older reader is not evidence that collection was complete.
+
+### Export for Android v0.1.1
+
+Use `DiagnosticEventJSONCodec().exportAndroidV2(snapshot)` when the recipient only reads schema v2.
+The result pairs the legacy JSON with explicit omissions. Surface those omissions alongside the JSON:
+delivery completeness, display readiness, device display name, and iOS-only events cannot be
+represented with their original meaning. Display readiness is removed rather than interpreted as
+a rendered frame. Keep native v3 for full-fidelity exports.
