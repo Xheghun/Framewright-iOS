@@ -4,7 +4,7 @@ Framewright is an attach-first diagnostics toolkit for iOS video playback, distr
 
 Your application retains ownership of player creation, configuration, playback control, and lifecycle.
 
-> **Development status:** Analytics, AVPlayer integration, and the SwiftUI diagnostics overlay are available. Bandwidth, codec, DRM, and storage modules remain unimplemented.
+> **Development status** · The package includes analytics, AVPlayer integration, a SwiftUI overlay, bandwidth telemetry, asset format inspection, FairPlay host hooks, and session storage. The [Android parity roadmap](docs/implementation-plan.md) tracks the remaining features and acceptance evidence.
 
 ## Modules
 
@@ -14,11 +14,11 @@ The package defines the following products and module responsibilities:
 | --- | --- |
 | [`FramewrightAnalytics`](docs/modules/analytics.md) | Player-independent events, aggregation, summaries, and JSON serialization |
 | [`FramewrightAVPlayerAdapter`](docs/modules/avplayer-adapter.md) | AVPlayer observation and playback event mapping |
-| `FramewrightBandwidthMonitor` | Bandwidth and transfer telemetry |
-| `FramewrightCodecInspector` | Media-format and codec inspection |
-| `FramewrightDRMInspector` | DRM diagnostics |
+| [`FramewrightBandwidthMonitor`](docs/modules/bandwidth-monitor.md) | Bandwidth and transfer telemetry |
+| [`FramewrightCodecInspector`](docs/modules/codec-inspector.md) | Media-format and codec inspection |
+| [`FramewrightDRMInspector`](docs/modules/drm-inspector.md) | DRM diagnostics |
 | [`FramewrightDiagnosticsOverlay`](docs/modules/diagnostics-overlay.md) | SwiftUI session metrics, event history, and export |
-| `FramewrightStorage` | Session persistence and JSON export |
+| [`FramewrightStorage`](docs/modules/storage.md) | Session persistence and JSON export |
 
 Each product is declared separately so applications can select the modules they need. Feature modules depend on `FramewrightAnalytics`.
 
@@ -26,7 +26,7 @@ Each product is declared separately so applications can select the modules they 
 
 Open `Package.swift` in Xcode to work on the library, or add the repository directory as a local Swift package dependency.
 
-The package specifies iOS 16 or later and Swift tools 6.0. macOS 13 is declared for host-side analytics testing. Release compatibility has not yet been validated.
+The package specifies iOS 16 or later and Swift tools 6.0. The package declares macOS 13 for host-side development. See the [test guide](Tests/README.md) for simulator coverage and the roadmap for remaining release checks.
 
 Inspect and build the package:
 
@@ -36,7 +36,7 @@ swift build
 swift test
 ```
 
-These commands validate the package structure and compile the source targets on the host platform. iOS integration requires separate simulator and device validation.
+These commands validate the package and run its macOS tests. Use the iOS simulator schemes for integration checks.
 
 ## Contributor documentation
 
