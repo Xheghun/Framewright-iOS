@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AABB00112233445566778801 /* FramewrightDiagnosticsOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */; };
 		0110EBCE90F3226C775138AC /* PlaybackModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C46FD7440894DC28E78F7B6 /* PlaybackModelTests.swift */; };
-		137B05C3E4D98036EF3D1CEB /* SessionDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676CBE8640D8DA36501D417D /* SessionDocument.swift */; };
 		185CEAD49A34AC05F15DCEC2 /* FramewrightAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */; };
 		2AF1FD5D7C9F726AAFB16D2F /* ColorBars.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 459ADAF2ED194CE38CB7CD79 /* ColorBars.mp4 */; };
 		2F48B69185DF5DD0C9177BA6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12797E03999D60C8117811F3 /* Foundation.framework */; };
@@ -36,7 +36,6 @@
 		38E39535622A60CB31380D6B /* FramewrightDemoApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramewrightDemoApp.swift; sourceTree = "<group>"; };
 		459ADAF2ED194CE38CB7CD79 /* ColorBars.mp4 */ = {isa = PBXFileReference; includeInIndex = 1; path = ColorBars.mp4; sourceTree = "<group>"; };
 		58FA5EB59EB87D2A06E08839 /* TestPattern.mp4 */ = {isa = PBXFileReference; includeInIndex = 1; path = TestPattern.mp4; sourceTree = "<group>"; };
-		676CBE8640D8DA36501D417D /* SessionDocument.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SessionDocument.swift; sourceTree = "<group>"; };
 		8C46FD7440894DC28E78F7B6 /* PlaybackModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlaybackModelTests.swift; sourceTree = "<group>"; };
 		971C9F809D37940A8563271B /* FramewrightDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FramewrightDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B70AED51A2D277210FAC61FC /* PlaybackModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlaybackModel.swift; sourceTree = "<group>"; };
@@ -58,6 +57,7 @@
 			files = (
 				2F48B69185DF5DD0C9177BA6 /* Foundation.framework in Frameworks */,
 				185CEAD49A34AC05F15DCEC2 /* FramewrightAnalytics in Frameworks */,
+				AABB00112233445566778801 /* FramewrightDiagnosticsOverlay in Frameworks */,
 				423A2DA1632D80FAE99FD684 /* FramewrightAVPlayerAdapter in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -116,7 +116,6 @@
 				38E39535622A60CB31380D6B /* FramewrightDemoApp.swift */,
 				B70AED51A2D277210FAC61FC /* PlaybackModel.swift */,
 				25CD86F52F49775FA67F1228 /* PlaybackView.swift */,
-				676CBE8640D8DA36501D417D /* SessionDocument.swift */,
 				24A0617ED1CBFA810E4D51F4 /* Media */,
 			);
 			name = FramewrightDemo;
@@ -168,6 +167,7 @@
 			name = FramewrightDemo;
 			packageProductDependencies = (
 				8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */,
+				AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */,
 				D5F66BF7A005D31F15058CFE /* FramewrightAVPlayerAdapter */,
 			);
 			productName = FramewrightDemo;
@@ -242,7 +242,6 @@
 				C52EC1EBE896D756DB305CE7 /* FramewrightDemoApp.swift in Sources */,
 				D9C279FCBE019D72BA0FF8C2 /* PlaybackModel.swift in Sources */,
 				F1C1550B50A57C33F234440E /* PlaybackView.swift in Sources */,
-				137B05C3E4D98036EF3D1CEB /* SessionDocument.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -491,6 +490,7 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */ = {isa = XCSwiftPackageProductDependency; productName = FramewrightDiagnosticsOverlay; };
 		8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C68F61A8135DD76DCFC099C4 /* XCLocalSwiftPackageReference ".." */;

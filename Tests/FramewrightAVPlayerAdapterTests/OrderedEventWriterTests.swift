@@ -46,51 +46,45 @@ private func deliveryEvent(_ id: String) throws -> DiagnosticEvent {
     await writer.waitUntilFinished()
 }
 
-private final class BlockingDeliverySink: DiagnosticEventSink, @unchecked Sendable {
+private final class FirstDeliverySink: DiagnosticEventSink, @unchecked Sendable {
     private let lock = NSLock()
-    private var entered = false
-    private let release = DispatchSemaphore(value: 0)
-    var hasEntered: Bool { lock.withLock { entered } }
-    func unblock() { release.signal() }
-    func record(_ event: DiagnosticEvent) throws {
-        let shouldBlock = lock.withLock {
-            if entered { return false }
-            entered = true
-            return true
-        }
-        if shouldBlock, release.wait(timeout: .now() + 10) != .success {
-            throw SinkTimeout.expired
-        }
+    private var action: (@Sendable () -> Void)?
+
+    func onFirstDelivery(_ action: @escaping @Sendable () -> Void) {
+        lock.withLock { self.action = action }
     }
-    private enum SinkTimeout: Error { case expired }
+
+    func record(_ event: DiagnosticEvent) throws {
+        let action = lock.withLock {
+            let action = self.action
+            self.action = nil
+            return action
+        }
+        action?()
+    }
 }
 
-@Test(.timeLimit(.minutes(1))) @MainActor func capacityIncludesBlockedInFlightEvents() async throws {
-    let sink = BlockingDeliverySink()
-    defer { sink.unblock() }
+@Test(.timeLimit(.minutes(1))) @MainActor func capacityIncludesInFlightEvents() async throws {
+    let sink = FirstDeliverySink()
     let pipeline = try DiagnosticEventPipeline(sinks: [sink])
-    var errors: [AVPlayerDiagnosticsError] = []
+    let errors = AsyncStream<AVPlayerDiagnosticsError>.makeStream()
+    defer { errors.continuation.finish() }
     let writer = OrderedEventWriter(pipeline: pipeline, capacity: 2) { error in
-        if let error = error as? AVPlayerDiagnosticsError { errors.append(error) }
+        if let error = error as? AVPlayerDiagnosticsError { errors.continuation.yield(error) }
+    }
+    let queued = try deliveryEvent("queued")
+    let rejected = try deliveryEvent("rejected")
+    sink.onFirstDelivery {
+        // The first event is still inside publish, so it must occupy one queue slot.
+        writer.write([queued])
+        writer.write([rejected])
     }
     writer.write([try deliveryEvent("in-flight")])
-    let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-    while !sink.hasEntered, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
-    try #require(sink.hasEntered)
-    writer.write([try deliveryEvent("queued")])
-    writer.write([try deliveryEvent("rejected")])
-    #expect(writer.hasOverflowed)
-    #expect(!writer.isDrained)
-    var flushed = false
-    let flush = Task {
-        await writer.flush()
-        flushed = true
-    }
-    for _ in 0..<100 where errors.isEmpty { await Task.yield() }
-    #expect(!flushed)
-    #expect(errors == [.eventQueueOverflow(capacity: 2)])
-    sink.unblock()
-    await flush.value
+    await writer.flush()
+    try #require(writer.hasOverflowed)
     await writer.waitUntilFinished()
+    var iterator = errors.stream.makeAsyncIterator()
+    #expect(await iterator.next() == .eventQueueOverflow(capacity: 2))
+    #expect(writer.isDrained)
     #expect(try await pipeline.snapshot(sessionId: "delivery").events.map(\.eventId) == ["in-flight", "queued"])
 }

@@ -24,6 +24,7 @@ let package = Package(
         .target(name: "FramewrightCodecInspector", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightDRMInspector", dependencies: ["FramewrightAnalytics"]),
         .target(name: "FramewrightDiagnosticsOverlay", dependencies: ["FramewrightAnalytics"]),
+        .testTarget(name: "FramewrightDiagnosticsOverlayTests", dependencies: ["FramewrightDiagnosticsOverlay"]),
         .target(name: "FramewrightStorage", dependencies: ["FramewrightAnalytics"]),
     ]
 )

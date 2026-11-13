@@ -2,6 +2,11 @@ import Darwin
 import Foundation
 
 public struct AVPlayerDiagnosticsConfiguration: Sendable {
+    private var deviceNameOverride: String?
+    public var deviceName: String? {
+        get { deviceNameOverride ?? DeviceNames.name(for: deviceModel) }
+        set { deviceNameOverride = newValue }
+    }
     public var deviceModel: String
     public var osVersion: String
     public var appVersion: String
@@ -13,10 +18,12 @@ public struct AVPlayerDiagnosticsConfiguration: Sendable {
         deviceModel: String = AVPlayerDiagnosticsConfiguration.currentDeviceModel,
         osVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
         appVersion: String = AVPlayerDiagnosticsConfiguration.currentAppVersion,
+        deviceName: String? = nil,
         includeErrorMessages: Bool = false,
         sanitizeURI: @escaping @Sendable (String) -> String = AVPlayerDiagnosticsConfiguration.redactURI,
         onDiagnosticsError: @escaping @MainActor @Sendable (any Error) -> Void = { _ in }
     ) {
+        self.deviceNameOverride = deviceName
         self.deviceModel = deviceModel
         self.osVersion = osVersion
         self.appVersion = appVersion

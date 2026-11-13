@@ -1,5 +1,5 @@
-import AVKit
-import FramewrightAnalytics
+@preconcurrency import AVKit
+import FramewrightDiagnosticsOverlay
 import SwiftUI
 
 struct PlaybackView: View {
@@ -12,9 +12,6 @@ struct PlaybackView: View {
     @State private var showingPoster = true
     @State private var posterURL = URL(string: "https://media.w3.org/2010/05/bunny/poster.png")
     @State private var sourceError: String?
-    @State private var document: SessionDocument?
-    @State private var exporting = false
-    @State private var preparingExport = false
 
     private let accent = Color(red: 0.46, green: 0.82, blue: 0.84)
 
@@ -24,11 +21,23 @@ struct PlaybackView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     player
                     nowPlaying
+                    if let pipeline = model.pipeline {
+                        FramewrightDiagnosticsOverlay(
+                            pipeline: pipeline, sessionID: model.selectedSession,
+                            incomplete: model.diagnosticsIncomplete)
+                    }
                     if let message = model.message {
                         Label(message, systemImage: "exclamationmark.circle")
                             .font(.footnote).foregroundStyle(.orange).textSelection(.enabled)
                     }
-                    sessionLink
+                    if model.sessions.count > 1 {
+                        Picker("Diagnostic session", selection: $model.selectedSession) {
+                            ForEach(model.sessions, id: \.self) { id in
+                                Text(String(id.prefix(8))).tag(id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                     Button {
                         showingMedia = true
                     } label: {
@@ -67,15 +76,11 @@ struct PlaybackView: View {
         .onChange(of: scenePhase) { phase in
             if phase != .active { model.pause() }
         }
-        .fileExporter(
-            isPresented: $exporting, document: document, contentType: .json, defaultFilename: "framewright-session"
-        ) { result in
-            if case .failure = result { model.message = "Unable to save the session export." }
-        }
     }
 
     private var player: some View {
-        VideoPlayer(player: model.player)
+        InstrumentedVideoPlayer(model: model, session: model.renderingSession)
+            .id(model.renderingSession)
             .aspectRatio(16 / 9, contentMode: .fit)
             .background(.black)
             .overlay {
@@ -139,32 +144,6 @@ struct PlaybackView: View {
         }
     }
 
-    private var sessionLink: some View {
-        NavigationLink {
-            diagnostics
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: model.diagnosticsIncomplete ? "exclamationmark.triangle" : "waveform.path.ecg")
-                    .font(.title3).foregroundStyle(model.diagnosticsIncomplete ? .orange : accent)
-                    .frame(width: 42, height: 42)
-                    .background(accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Session activity").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                    Text(
-                        model.diagnosticsIncomplete
-                            ? "Some diagnostics are incomplete" : "View events and export sessions"
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            }
-            .padding(16)
-            .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 18))
-        }
-        .buttonStyle(.plain)
-    }
-
     private var playbackMenu: some View {
         Menu {
             Button(action: model.play) { Label("Play", systemImage: "play") }
@@ -201,6 +180,20 @@ struct PlaybackView: View {
                     Text("Sample films")
                 } footer: {
                     Text("Trailers stream over the internet. Choose an offline test video when disconnected.")
+                }
+                Section("Streaming diagnostics") {
+                    Button("Apple HLS test stream") {
+                        model.loadStream(
+                            "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8"
+                        )
+                        showingPoster = false
+                        posterURL = nil
+                        mediaName = "Apple Bip Bop"
+                        mediaKind = "HLS test stream"
+                        showingMedia = false
+                    }
+                    Text("Use HLS to inspect access-log counters. Requires an internet connection.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Offline test videos") {
                     mediaOption(
@@ -299,77 +292,6 @@ struct PlaybackView: View {
         }
     }
 
-    private var diagnostics: some View {
-        List {
-            if let message = model.message {
-                Section { Text(message).foregroundStyle(.orange).textSelection(.enabled) }
-            }
-            if model.diagnosticsIncomplete {
-                Section {
-                    Label(
-                        "Diagnostics incomplete. Restart the app before a new validation run.",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .foregroundStyle(.orange)
-                }
-            }
-            Section {
-                if model.sessions.isEmpty {
-                    Text("Events will appear after a video is loaded.").foregroundStyle(.secondary)
-                } else {
-                    Picker("Session", selection: $model.selectedSession) {
-                        ForEach(model.sessions, id: \.self) { id in
-                            Text(String(id.prefix(8))).tag(id)
-                        }
-                    }
-                    Button(action: exportSession) {
-                        Label(preparingExport ? "Preparing export…" : "Export JSON", systemImage: "square.and.arrow.up")
-                    }.disabled(preparingExport || model.selectedSession.isEmpty)
-                }
-            } header: {
-                Text("Session")
-            } footer: {
-                Text(
-                    "First-frame timing is unavailable with this player view. Exports include the session's retained events."
-                )
-            }
-            Section {
-                ForEach(model.events.filter { $0.sessionId == model.selectedSession }.reversed(), id: \.eventId) {
-                    event in
-                    DisclosureGroup {
-                        Text(eventJSON(event)).font(.caption.monospaced()).textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(event.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
-                                .font(.subheadline.weight(.medium))
-                            Text(Date(timeIntervalSince1970: Double(event.metadata.timestampMs) / 1_000), style: .time)
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            } header: {
-                Text("Recent events")
-            } footer: {
-                Text("Latest 200 events · Last 10 sessions")
-            }
-        }
-        .navigationTitle("Session activity")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func exportSession() {
-        let id = model.selectedSession
-        preparingExport = true
-        Task {
-            defer { preparingExport = false }
-            do {
-                document = SessionDocument(text: try await model.exportSession(id))
-                exporting = true
-            } catch { model.message = "Unable to export this session." }
-        }
-    }
-
     private func loadBundled(_ name: String, title: String) {
         guard let url = Bundle.main.url(forResource: name, withExtension: "mp4") else {
             model.message = "Bundled media is missing."
@@ -382,10 +304,40 @@ struct PlaybackView: View {
         mediaKind = "Bundled video"
     }
 
-    private func eventJSON(_ event: DiagnosticEvent) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(event) else { return event.type.rawValue }
-        return String(decoding: data, as: UTF8.self)
+}
+
+struct InstrumentedVideoPlayer: UIViewControllerRepresentable {
+    let model: PlaybackModel
+    let session: String
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        let item = model.player.currentItem
+        controller.player = model.player
+        context.coordinator.observation = controller.observe(\.isReadyForDisplay, options: [.initial, .new]) {
+            [weak controller, weak model] _, change in
+            guard change.newValue == true else { return }
+            Task { @MainActor in
+                guard let controller, controller.isReadyForDisplay, let item,
+                    controller.player?.currentItem === item
+                else { return }
+                model?.firstFrameReady(for: item, session: session)
+            }
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {}
+
+    static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: Coordinator) {
+        coordinator.observation?.invalidate()
+        coordinator.observation = nil
+        controller.player = nil
+    }
+
+    final class Coordinator {
+        var observation: NSKeyValueObservation?
     }
 }

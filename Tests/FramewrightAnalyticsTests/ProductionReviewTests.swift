@@ -157,3 +157,26 @@ func decoderCapabilityFieldsAreRequired(field: String) throws {
     let codec = DiagnosticEventJSONCodec()
     #expect(try codec.decodeEvent(codec.encodeEvent(event)) == event)
 }
+
+@Test(arguments: [nil, false, true] as [Bool?], [false, true])
+func sessionDeliveryCompletenessRoundTrips(incomplete: Bool?, truncated: Bool) throws {
+    let codec = DiagnosticEventJSONCodec()
+    let snapshot = try SessionSnapshot(sessionId: "session", truncated: truncated, deliveryIncomplete: incomplete)
+    let json = try codec.encodeSession(snapshot)
+    #expect(try codec.decodeSession(json) == snapshot)
+    #expect(json.contains("deliveryIncomplete") == (incomplete != nil))
+}
+
+@Test(arguments: [2, 3]) func legacySessionCompletenessIsUnspecified(version: Int) throws {
+    let url = try #require(Bundle.module.url(forResource: "schema-v\(version)-session", withExtension: "json"))
+    var root = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    let json = String(decoding: try JSONSerialization.data(withJSONObject: root), as: UTF8.self)
+    let codec = DiagnosticEventJSONCodec()
+    let snapshot = try codec.decodeSession(json)
+    #expect(snapshot.deliveryIncomplete == nil)
+    #expect(try codec.decodeSession(codec.encodeSession(snapshot)) == snapshot)
+    root["deliveryIncomplete"] = "true"
+    #expect(throws: CodecError.self) {
+        try codec.decodeSession(String(decoding: JSONSerialization.data(withJSONObject: root), as: UTF8.self))
+    }
+}

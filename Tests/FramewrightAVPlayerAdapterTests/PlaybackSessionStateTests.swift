@@ -105,3 +105,27 @@ private func start(_ state: inout PlaybackSessionState, prepared: Int64? = 0) th
     #expect(custom.deviceModel == "custom")
     #expect(custom.appVersion == "1.2")
 }
+
+@Test func readableDeviceNamesHaveSafeFallbacks() {
+    #expect(DeviceNames.name(for: "iPhone17,1") == "iPhone 16 Pro")
+    #expect(DeviceNames.name(for: "iPad16,3") == "iPad Pro (11-inch) (M4)")
+    #expect(DeviceNames.name(for: "iPhone99,1") == "iPhone99,1")
+    #expect(AVPlayerDiagnosticsConfiguration(deviceModel: "iPhone17,1").deviceName == "iPhone 16 Pro")
+    #expect(
+        AVPlayerDiagnosticsConfiguration(deviceModel: "custom", deviceName: "Test device").deviceName == "Test device")
+}
+
+@Test func displayReadinessDoesNotTurnStartupWaitingIntoRebuffering() throws {
+    var state = PlaybackSessionState()
+    _ = try start(&state)
+    let first = try state.firstFrame(at: time(1), source: .readyForDisplay)
+    #expect(first.first?.payload == .renderFirstFrame(try .init(elapsedSincePrepareMs: 1, source: .readyForDisplay)))
+    let startup = try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(2))
+    #expect(!startup.contains { $0.type == .rebufferStart })
+    _ = try state.update(control: .playing, ready: true, buffering: false, bufferedMs: 10, at: time(3))
+    let stall = try state.update(control: .waiting, ready: true, buffering: true, bufferedMs: 0, at: time(4))
+    #expect(stall.contains { $0.type == .rebufferStart })
+    let recovered = try state.update(control: .playing, ready: true, buffering: false, bufferedMs: 10, at: time(9))
+    let expected = try DiagnosticPayload.rebufferEnd(.init(durationMs: 5))
+    #expect(recovered.contains { $0.payload == expected })
+}
