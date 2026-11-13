@@ -1,9 +1,12 @@
 @preconcurrency import AVKit
+import Charts
+import FramewrightAnalytics
 import FramewrightDiagnosticsOverlay
 import SwiftUI
 
 struct PlaybackView: View {
-    @StateObject private var model = PlaybackModel()
+    @StateObject private var model = PlaybackModel(
+        persistenceDirectory: URL.applicationSupportDirectory.appendingPathComponent("FramewrightSessions"))
     @Environment(\.scenePhase) private var scenePhase
     @State private var stream = ""
     @State private var mediaName = "Big Buck Bunny"
@@ -15,16 +18,95 @@ struct PlaybackView: View {
 
     private let accent = Color(red: 0.46, green: 0.82, blue: 0.84)
 
+    private var bandwidthDetails: some View {
+        DisclosureGroup("ABR Explorer") {
+            VStack(alignment: .leading, spacing: 8) {
+                if !model.bandwidthHistory.isEmpty {
+                    bandwidthChart
+                }
+                LabeledContent("Observed throughput", value: bitrateLabel(model.bandwidthSample?.observedThroughputBps))
+                LabeledContent(
+                    "Advertised media bitrate", value: bitrateLabel(model.bandwidthSample?.indicatedMediaBitrateBps))
+                LabeledContent(
+                    "Custom estimate",
+                    value: bitrateLabel(model.bandwidthSample?.estimate.map { Double($0.drivingBps) }))
+                LabeledContent(
+                    "Confidence",
+                    value: model.bandwidthSample?.estimate.map {
+                        $0.confidence.formatted(.percent.precision(.fractionLength(0)))
+                    }
+                        ?? "Unavailable")
+                LabeledContent("Player bandwidth estimate", value: "Unavailable")
+                LabeledContent(
+                    "Selected variant at last switch",
+                    value: bitrateLabel(model.latestVariantSwitch?.selectedPeakBitrateBps))
+                if let switchEvent = model.latestVariantSwitch {
+                    LabeledContent("Previous variant", value: bitrateLabel(switchEvent.previousPeakBitrateBps))
+                    LabeledContent("Switch reason", value: "Unavailable")
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private var bandwidthChart: some View {
+        Chart(model.bandwidthHistory) { point in
+            if let observed = point.sample.observedThroughputBps {
+                LineMark(
+                    x: .value("Elapsed seconds", point.elapsed),
+                    y: .value("Bitrate (kb/s)", observed / 1_000)
+                )
+                .foregroundStyle(by: .value("Series", "Observed throughput"))
+            }
+            if let estimate = point.sample.estimate {
+                LineMark(
+                    x: .value("Elapsed seconds", point.elapsed),
+                    y: .value("Bitrate (kb/s)", Double(estimate.drivingBps) / 1_000)
+                )
+                .foregroundStyle(by: .value("Series", "Custom estimate"))
+            }
+        }
+        .chartYAxisLabel("kb/s")
+        .frame(height: 150)
+        .accessibilityLabel("Observed throughput and custom estimate over time")
+    }
+
+    private func storedSessionDetails(_ snapshot: SessionSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Stored session").font(.headline)
+            Text(snapshot.sessionId).font(.caption).textSelection(.enabled)
+            Text("\(snapshot.events.count) events")
+            if snapshot.deliveryIncomplete == true { Text("Delivery incomplete") }
+            if snapshot.truncated { Text("History truncated") }
+            if let json = try? DiagnosticEventJSONCodec().encodeSession(snapshot) {
+                ShareLink(item: json) { Label("Share stored JSON", systemImage: "square.and.arrow.up") }
+            }
+            Button("Close stored session") { model.dismissStoredSession() }
+        }
+    }
+
+    private func bitrateLabel(_ value: Double?) -> String {
+        guard let value else { return "Unavailable" }
+        return "\((value / 1_000).formatted(.number.precision(.fractionLength(0)))) kb/s"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     player
                     nowPlaying
+                    bandwidthDetails
                     if let pipeline = model.pipeline {
                         FramewrightDiagnosticsOverlay(
                             pipeline: pipeline, sessionID: model.selectedSession,
                             incomplete: model.diagnosticsIncomplete)
+                    }
+                    Button("Open latest stored session") {
+                        Task { await model.openLatestStoredSession() }
+                    }
+                    if let stored = model.storedSession {
+                        storedSessionDetails(stored)
                     }
                     if let message = model.message {
                         Label(message, systemImage: "exclamationmark.circle")

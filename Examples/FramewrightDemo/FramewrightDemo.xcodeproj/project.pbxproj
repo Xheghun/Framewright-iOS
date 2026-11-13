@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E9AE3218D6D14DD8A0936293 /* FramewrightStorage in Frameworks */ = {isa = PBXBuildFile; productRef = E9AE3218D6D14DD8A0936294 /* FramewrightStorage */; };
+		E9AE3218D6D14DD8A0936291 /* FramewrightBandwidthMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = E9AE3218D6D14DD8A0936292 /* FramewrightBandwidthMonitor */; };
 		AABB00112233445566778801 /* FramewrightDiagnosticsOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */; };
 		0110EBCE90F3226C775138AC /* PlaybackModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C46FD7440894DC28E78F7B6 /* PlaybackModelTests.swift */; };
 		185CEAD49A34AC05F15DCEC2 /* FramewrightAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */; };
@@ -59,6 +61,8 @@
 				185CEAD49A34AC05F15DCEC2 /* FramewrightAnalytics in Frameworks */,
 				AABB00112233445566778801 /* FramewrightDiagnosticsOverlay in Frameworks */,
 				423A2DA1632D80FAE99FD684 /* FramewrightAVPlayerAdapter in Frameworks */,
+				E9AE3218D6D14DD8A0936291 /* FramewrightBandwidthMonitor in Frameworks */,
+				E9AE3218D6D14DD8A0936293 /* FramewrightStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -169,6 +173,8 @@
 				8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */,
 				AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */,
 				D5F66BF7A005D31F15058CFE /* FramewrightAVPlayerAdapter */,
+				E9AE3218D6D14DD8A0936292 /* FramewrightBandwidthMonitor */,
+				E9AE3218D6D14DD8A0936294 /* FramewrightStorage */,
 			);
 			productName = FramewrightDemo;
 			productReference = 971C9F809D37940A8563271B /* FramewrightDemo.app */;
@@ -490,6 +496,8 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		E9AE3218D6D14DD8A0936294 /* FramewrightStorage */ = {isa = XCSwiftPackageProductDependency; package = C68F61A8135DD76DCFC099C4; productName = FramewrightStorage; };
+		E9AE3218D6D14DD8A0936292 /* FramewrightBandwidthMonitor */ = {isa = XCSwiftPackageProductDependency; package = C68F61A8135DD76DCFC099C4; productName = FramewrightBandwidthMonitor; };
 		AABB00112233445566778802 /* FramewrightDiagnosticsOverlay */ = {isa = XCSwiftPackageProductDependency; productName = FramewrightDiagnosticsOverlay; };
 		8F5C4CDF62C92BD422AE5150 /* FramewrightAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;

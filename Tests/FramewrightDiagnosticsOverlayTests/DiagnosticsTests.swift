@@ -148,3 +148,18 @@ func capturedExportMergesHostLossIndependently(incomplete: Bool, truncated: Bool
     #expect(try codec.decodeSession(state.exportJSON(sessionID: "first")).deliveryIncomplete == knownLoss)
     #expect(try codec.decodeSession(state.exportJSON(sessionID: "first", incomplete: true)).deliveryIncomplete == true)
 }
+
+@Test func overlayReducesPlatformNeutralEventsWithoutInventingMissingFields() throws {
+    let format = try FormatSnapshot(width: 640, height: 360, bitrate: 800_000, codecs: "avc1")
+    let change = try TrackSwitchPayload(
+        toFormat: format, reason: .initial, estimatedBandwidthBps: 1_000_000, bufferedDurationMs: 400)
+    let drm = try DRMSessionEventPayload(eventType: .acquired, state: .opening)
+    let events = try [event(.trackSwitch(change)), event(.drmSessionEvent(drm))]
+    let state = try DiagnosticsState(snapshot: SessionSnapshot(sessionId: "first", events: events))
+    #expect(state.selectedFormat == format)
+    #expect(state.drmSession?.state == .opening)
+    #expect(state.decoder == nil)
+    #expect(state.bandwidth == nil)
+    #expect(state.drmKey == nil)
+    #expect(state.lastIssue == nil)
+}
