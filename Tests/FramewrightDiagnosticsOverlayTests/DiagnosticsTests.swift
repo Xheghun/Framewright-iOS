@@ -123,3 +123,28 @@ private enum WaitError: Error { case timeout }
     observation.cancel()
     await observation.value
 }
+
+@Test(arguments: [false, true], [false, true])
+func capturedExportMergesHostLossIndependently(incomplete: Bool, truncated: Bool) throws {
+    let snapshot = try SessionSnapshot(sessionId: "first", truncated: truncated)
+    let state = try DiagnosticsState(snapshot: snapshot)
+    let exported = try DiagnosticEventJSONCodec().decodeSession(
+        state.exportJSON(sessionID: "first", incomplete: incomplete))
+    #expect(exported.deliveryIncomplete == (incomplete ? true : nil))
+    #expect(exported.truncated == truncated)
+    #expect(state.snapshot == snapshot)
+    #expect(throws: AnalyticsValidationError.self) {
+        try state.exportJSON(sessionID: "second", incomplete: true)
+    }
+    let next = try DiagnosticsState(snapshot: SessionSnapshot(sessionId: "second"))
+    #expect(
+        try DiagnosticEventJSONCodec().decodeSession(next.exportJSON(sessionID: "second")).deliveryIncomplete == nil)
+}
+
+@Test(arguments: [false, true]) func hostCannotClearCapturedDeliveryMetadata(knownLoss: Bool) throws {
+    let state = try DiagnosticsState(
+        snapshot: SessionSnapshot(sessionId: "first", deliveryIncomplete: knownLoss))
+    let codec = DiagnosticEventJSONCodec()
+    #expect(try codec.decodeSession(state.exportJSON(sessionID: "first")).deliveryIncomplete == knownLoss)
+    #expect(try codec.decodeSession(state.exportJSON(sessionID: "first", incomplete: true)).deliveryIncomplete == true)
+}

@@ -19,3 +19,5 @@ Place the view beside the player or in a SwiftUI `.overlay(alignment:)`. Its com
 Metrics describe retained events. Truncated history is labeled. First-frame and rebuffer counts remain unavailable without first-frame instrumentation; dropped frames remain unavailable until reported. Missing device metadata is shown as unavailable. Exports capture the displayed snapshot, which can lag publication by one refresh interval, and retain its truncation flag.
 
 The sheet supports Dynamic Type, text selection, and labeled accessibility controls. Test device-specific measurements and VoiceOver in the integrating application.
+
+Exports merge the host's selected-session `incomplete` warning into the captured snapshot's optional `deliveryIncomplete` metadata. A false host warning leaves unspecified or existing metadata unchanged; it never clears known loss. Truncation remains independent. Export is disabled while displayed state belongs to a previous selection, and `DiagnosticsState.exportJSON(sessionID:incomplete:)` rejects a mismatched session. Supply a warning scoped to the selected session, not a global selection-independent flag.

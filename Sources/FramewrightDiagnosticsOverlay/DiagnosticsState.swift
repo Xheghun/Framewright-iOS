@@ -10,6 +10,12 @@ public struct DiagnosticsState: Equatable, Sendable {
     public let droppedFrames: Int64?
     public let firstFrameSource: FirstFrameSource?
 
+    /// Captures only the selected session; stale displayed state cannot be exported after a switch.
+    public func exportJSON(sessionID: String, incomplete: Bool = false) throws -> String {
+        guard snapshot.sessionId == sessionID else { throw AnalyticsValidationError.invalidField("sessionId") }
+        return try DiagnosticEventJSONCodec().encodeSession(snapshot.mergingDeliveryIncomplete(incomplete))
+    }
+
     public init(snapshot: SessionSnapshot) throws {
         self.snapshot = snapshot
         summary = try SessionSummaryCalculator().calculate(snapshot)

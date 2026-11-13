@@ -45,7 +45,9 @@ public struct FramewrightDiagnosticsOverlay: View {
     private var details: some View {
         NavigationStack {
             List {
-                if incomplete { Text("Some diagnostics could not be recorded.").foregroundStyle(.orange) }
+                if incomplete || model.state?.snapshot.deliveryIncomplete == true {
+                    Text("Some diagnostics could not be recorded.").foregroundStyle(.orange)
+                }
                 if let error = model.errorMessage { Text(error).foregroundStyle(.orange) }
                 if let state = model.state {
                     Section("Session") {
@@ -92,7 +94,7 @@ public struct FramewrightDiagnosticsOverlay: View {
                     } label: {
                         Label("Export JSON", systemImage: "square.and.arrow.up")
                     }
-                    .disabled(model.state == nil)
+                    .disabled(model.state?.snapshot.sessionId != sessionID)
                 }
             }
             .fileExporter(
@@ -111,7 +113,7 @@ public struct FramewrightDiagnosticsOverlay: View {
     private func export() {
         guard let state = model.state else { return }
         do {
-            document = DiagnosticsDocument(json: try DiagnosticEventJSONCodec().encodeSession(state.snapshot))
+            document = DiagnosticsDocument(json: try state.exportJSON(sessionID: sessionID, incomplete: incomplete))
             exportError = nil
             exporting = true
         } catch { exportError = "Unable to export the session." }

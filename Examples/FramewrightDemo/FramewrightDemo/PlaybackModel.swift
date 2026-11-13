@@ -16,13 +16,22 @@ final class PlaybackModel: ObservableObject {
     @Published private(set) var position = 0.0
     @Published private(set) var duration = 0.0
     @Published private(set) var isSeeking = false
-    @Published private(set) var diagnosticsIncomplete = false
+    var diagnosticsIncomplete: Bool { isIncomplete(selectedSession) }
+    @Published private var failedConnections: Set<UUID> = []
+    private var sessionConnections: [String: UUID] = [:]
+    private var connectionID = UUID()
     private var lifecycleBusy = false
     private var seekID: UUID?
     @Published private(set) var pipeline: DiagnosticEventPipeline?
     private var diagnostics: FramewrightAVPlayer?
     private var subscription: DiagnosticSubscription?
     private var eventTask: Task<Void, Never>?
+
+    init(pipeline: DiagnosticEventPipeline? = nil) { self.pipeline = pipeline }
+
+    private func isIncomplete(_ session: String) -> Bool {
+        sessionConnections[session].map { failedConnections.contains($0) } ?? false
+    }
 
     func connect() async {
         while lifecycleBusy { await Task.yield() }
@@ -35,8 +44,10 @@ final class PlaybackModel: ObservableObject {
             self.pipeline = pipeline
             let subscription = await pipeline.subscribe()
             self.subscription = subscription
+            let connection = UUID()
+            connectionID = connection
             let configuration = AVPlayerDiagnosticsConfiguration(onDiagnosticsError: { [weak self] error in
-                self?.diagnosticsIncomplete = true
+                self?.failedConnections.insert(connection)
                 self?.message = "Diagnostics interrupted: \(error)"
             })
             diagnostics = try FramewrightAVPlayer.attach(
@@ -82,6 +93,7 @@ final class PlaybackModel: ObservableObject {
             try diagnostics.recordPreparationStarted(for: item)
             player.replaceCurrentItem(with: item)
             if let id = diagnostics.activeSessionID {
+                sessionConnections[id] = connectionID
                 selectedSession = id
                 renderingSession = id
             }
@@ -131,6 +143,7 @@ final class PlaybackModel: ObservableObject {
             player.pause()
             try diagnostics.startSession()
             selectedSession = diagnostics.activeSessionID ?? ""
+            sessionConnections[selectedSession] = connectionID
             renderingSession = selectedSession
             if let item = player.currentItem { try diagnostics.recordPreparationStarted(for: item) }
             seek(to: 0, playAfter: true)
@@ -190,7 +203,8 @@ final class PlaybackModel: ObservableObject {
     func exportSession(_ id: String) async throws -> String {
         guard let pipeline, !id.isEmpty else { throw ExportError.noSession }
         await diagnostics?.flush()
-        return try await pipeline.exportSessionJSON(sessionId: id)
+        let snapshot = try await pipeline.snapshot(sessionId: id)
+        return try DiagnosticEventJSONCodec().encodeSession(snapshot.mergingDeliveryIncomplete(isIncomplete(id)))
     }
 
     private func receive(_ event: DiagnosticEvent, pipeline: DiagnosticEventPipeline) async {
@@ -201,6 +215,7 @@ final class PlaybackModel: ObservableObject {
         while sessions.count > 10 {
             let removed = sessions.removeFirst()
             if selectedSession == removed { selectedSession = sessions.last ?? "" }
+            sessionConnections.removeValue(forKey: removed)
             await pipeline.clear(sessionId: removed)
         }
         if case .playbackError(let error) = event.payload { message = "Playback failed: \(error.errorCode)" }
