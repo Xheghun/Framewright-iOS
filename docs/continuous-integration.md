@@ -16,7 +16,7 @@ Each job validates the package manifest and reports its toolchain. Workflow perm
 
 The separate `iOS Tests` job inspects the package manifest for test targets. If none exist, it fails rather than silently skipping validation. It selects an available iPhone simulator and runs `xcodebuild test` using the package scheme. Test failures fail the job, and result bundles are uploaded for diagnosis. Manifest errors and missing simulators fail the job rather than being treated as skipped tests.
 
-The package includes analytics tests. Successful tests establish the covered analytics behavior, not playback correctness or release readiness for the remaining modules.
+See the [test guide](../Tests/README.md) for package coverage and the opt-in HLS fixture. Stacked pull requests receive these hosted checks when their base is `main`.
 
 ## Local validation
 
@@ -39,7 +39,7 @@ SPM consumes this repository directly. Source package distribution does not requ
 
 Release publication remains manual until implementation, tests, licensing, and compatibility validation are ready. No workflow creates tags or GitHub releases. For the first release:
 
-1. Complete the release-readiness checks in the implementation plan.
+1. Complete the [OpenSpec release-readiness checks](../openspec/changes/ios-quality-roadmap/tasks.md).
 2. Confirm all CI checks pass for the intended commit on `main`.
 3. Create and push a semantic version tag such as `v0.1.0`.
 4. Confirm the tag's CI run passes, then publish the GitHub release with compatibility details and release notes.
