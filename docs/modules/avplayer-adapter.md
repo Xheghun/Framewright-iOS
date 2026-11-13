@@ -88,7 +88,7 @@ If capacity is exceeded, `onDiagnosticsError` receives `.eventQueueOverflow(capa
 | Natural completion | Session end |
 | Host preparation/rendering hooks | First-frame timing |
 
-Codec, DRM, track-selection, transfer, and dropped-frame measurements are not emitted by this adapter version.
+Codec, DRM, track-selection, and transfer measurements are not emitted by this adapter version. Dropped-frame observations are described below.
 
 Reference: Apple's [playback-control states](https://developer.apple.com/documentation/avfoundation/avplayer/timecontrolstatus-swift.enum), [item notifications](https://developer.apple.com/documentation/avfoundation/avplayeritem), and [display-readiness semantics](https://developer.apple.com/documentation/avfoundation/avplayerlayer/isreadyfordisplay).
 
