@@ -139,3 +139,48 @@ import UIKit
     #expect(!next.events.contains { $0.type == .renderFirstFrame })
     await model.disconnect()
 }
+
+private final class FailingDiagnosticSink: DiagnosticEventSink, @unchecked Sendable {
+    private let lock = NSLock()
+    private var failing = true
+    func recover() { lock.withLock { failing = false } }
+    func record(_ event: DiagnosticEvent) throws {
+        if lock.withLock({ failing }) { throw SampleSinkError.failed }
+    }
+    private enum SampleSinkError: Error { case failed }
+}
+
+@Test @MainActor func deliveryErrorsFollowConnectionSessionsIntoExports() async throws {
+    let sink = FailingDiagnosticSink()
+    let pipeline = try DiagnosticEventPipeline(sinks: [sink])
+    let model = PlaybackModel(pipeline: pipeline)
+    let url = try #require(Bundle.main.url(forResource: "TestPattern", withExtension: "mp4"))
+    await model.connect()
+    model.load(url)
+    let first = model.selectedSession
+    let codec = DiagnosticEventJSONCodec()
+    let snapshot = try codec.decodeSession(await model.exportSession(first))
+    #expect(snapshot.deliveryIncomplete == true)
+    #expect(!snapshot.truncated)
+    #expect(model.diagnosticsIncomplete)
+    model.load(url)
+    let second = model.selectedSession
+    #expect(second != first)
+    #expect(model.diagnosticsIncomplete)
+    model.selectedSession = first
+    #expect(model.diagnosticsIncomplete)
+    #expect(try codec.decodeSession(await model.exportSession(first)).deliveryIncomplete == true)
+    #expect(try codec.decodeSession(await model.exportSession(second)).deliveryIncomplete == true)
+    await model.disconnect()
+    #expect(try codec.decodeSession(await model.exportSession(first)).deliveryIncomplete == true)
+    sink.recover()
+    await model.connect()
+    model.load(url)
+    let recovered = model.selectedSession
+    #expect(!model.diagnosticsIncomplete)
+    #expect(try codec.decodeSession(await model.exportSession(recovered)).deliveryIncomplete == nil)
+    model.selectedSession = first
+    #expect(model.diagnosticsIncomplete)
+    #expect(try codec.decodeSession(await model.exportSession(first)).deliveryIncomplete == true)
+    await model.disconnect()
+}

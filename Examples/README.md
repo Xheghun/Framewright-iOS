@@ -38,3 +38,5 @@ ffmpeg -f lavfi -i 'smptebars=size=640x360:rate=24:duration=12' -an -c:v libx264
 - **Sintel**: © 2010 Blender Foundation. [Attribution and license](https://durian.blender.org/about/). [Trailer](https://media.w3.org/2010/05/sintel/trailer.mp4).
 
 Both films are licensed under [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/). The sample streams unmodified trailers hosted by W3C; the films are not bundled with the app. Credits and license links are also available in the video picker.
+
+Delivery errors conservatively mark all sessions created on the affected diagnostic connection, including later sessions until reconnect. Selecting another session does not remove its warning. Both the overlay and `PlaybackModel.exportSession` encode the selected session's `deliveryIncomplete: true` separately from `truncated`; absent metadata means unspecified, not confirmed complete. Reconnect starts fresh warning scope while preserving warnings for earlier sessions. Older v3 readers may ignore the new field and cannot assess delivery loss.

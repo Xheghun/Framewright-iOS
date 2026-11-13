@@ -5,9 +5,14 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
     public let schemaVersion: Int
     public let sessionId: String
     public let truncated: Bool
+    /// nil means delivery completeness was not specified; independent of retention truncation.
+    public let deliveryIncomplete: Bool?
     public let events: [DiagnosticEvent]
 
-    public init(sessionId: String, truncated: Bool = false, events: [DiagnosticEvent] = []) throws {
+    public init(
+        sessionId: String, truncated: Bool = false, deliveryIncomplete: Bool? = nil,
+        events: [DiagnosticEvent] = []
+    ) throws {
         guard !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw AnalyticsValidationError.invalidField("sessionId")
         }
@@ -16,11 +21,19 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
         }
         self.schemaVersion = diagnosticSchemaVersion
         self.sessionId = sessionId
+        self.deliveryIncomplete = deliveryIncomplete
         self.truncated = truncated
         self.events = events
     }
 
-    private enum CodingKeys: String, CodingKey { case schemaVersion, sessionId, truncated, events }
+    /// A host warning can add known loss but cannot clear an existing warning.
+    public func mergingDeliveryIncomplete(_ incomplete: Bool) throws -> SessionSnapshot {
+        try SessionSnapshot(
+            sessionId: sessionId, truncated: truncated,
+            deliveryIncomplete: incomplete ? true : deliveryIncomplete, events: events)
+    }
+
+    private enum CodingKeys: String, CodingKey { case schemaVersion, sessionId, truncated, deliveryIncomplete, events }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -31,6 +44,7 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
         try self.init(
             sessionId: values.decode(String.self, forKey: .sessionId),
             truncated: values.decode(Bool.self, forKey: .truncated),
+            deliveryIncomplete: values.decodeIfPresent(Bool.self, forKey: .deliveryIncomplete),
             events: values.decode([DiagnosticEvent].self, forKey: .events)
         )
     }
