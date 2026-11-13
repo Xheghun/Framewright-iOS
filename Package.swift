@@ -26,7 +26,12 @@ let package = Package(
             dependencies: ["FramewrightBandwidthMonitor"], resources: [.process("Fixtures")]
         ),
         .target(name: "FramewrightCodecInspector", dependencies: ["FramewrightAnalytics"]),
+        .testTarget(
+            name: "FramewrightCodecInspectorTests", dependencies: ["FramewrightCodecInspector"],
+            resources: [.process("Fixtures")]
+        ),
         .target(name: "FramewrightDRMInspector", dependencies: ["FramewrightAnalytics"]),
+        .testTarget(name: "FramewrightDRMInspectorTests", dependencies: ["FramewrightDRMInspector"]),
         .target(name: "FramewrightDiagnosticsOverlay", dependencies: ["FramewrightAnalytics"]),
         .testTarget(name: "FramewrightDiagnosticsOverlayTests", dependencies: ["FramewrightDiagnosticsOverlay"]),
         .target(name: "FramewrightStorage", dependencies: ["FramewrightAnalytics"]),

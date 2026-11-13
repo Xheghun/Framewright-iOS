@@ -24,8 +24,9 @@ TEST_RUNNER_FRAMEWRIGHT_HLS_TEST_URL=http://127.0.0.1:8765/ \
   xcodebuild test -scheme Framewright-Package \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -only-testing:FramewrightAVPlayerAdapterTests \
-  CODE_SIGNING_ALLOWED=NO
+  -only-testing:FramewrightCodecInspectorTests CODE_SIGNING_ALLOWED=NO
 ```
 
-The tests validate playhead progress, terminal diagnostics for invalid media. Without the environment variable they are explicitly skipped. Server logs
+The tests validate playhead progress, terminal diagnostics for invalid media, and the declared
+variant inventory. Without the environment variable they are explicitly skipped. Server logs
 show the injected 503; a successful test does not establish aggregate throughput or ABR behavior.
